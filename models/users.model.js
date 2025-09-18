@@ -8,13 +8,6 @@ const UserSchema = mongoose.Schema(
             trim: true,
         },
 
-        // email: {
-        //     type: String,
-        //     required: [true, "Please enter email"],
-        //     unique: true,
-        //     lowercase: true,
-        // },
-
         password: {
             type: String,
             required: [true, "Please enter password "]
@@ -26,13 +19,12 @@ const UserSchema = mongoose.Schema(
             default: "customer",
         },
 
-        // phone: {
-        //     type: String,
-        // },
-
-        // avatar: {
-        //     type: String,
-        // },
+        product: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Products"
+            }
+        ]
     },
     { timestamps: true }
 )
