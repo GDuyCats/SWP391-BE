@@ -12,7 +12,9 @@ const sequelize = new Sequelize(
         dialect: process.env.DB_DIALECT,
         port: process.env.DB_PORT
     });
+    
 let UserModel = null;
+
 const connection = async () => {
     try {
         await sequelize.authenticate();
@@ -26,5 +28,6 @@ const connection = async () => {
 }
 
 export {
-    connection
+    connection,
+    UserModel
 }

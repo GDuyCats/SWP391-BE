@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
 
 export const createUserModel = async (sequelize) => {
-    const User = sequelize.define('User',{
+    const User = sequelize.define('Users',{
         name: {
             type: DataTypes.STRING,
             allowNull: false
@@ -12,6 +12,11 @@ export const createUserModel = async (sequelize) => {
             isLowercase: true,
             unique: true
         },
+        userID: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            unique: true
+        }
     })
 
     return User
