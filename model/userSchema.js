@@ -2,20 +2,34 @@ import { DataTypes } from "sequelize";
 
 export const createUserModel = async (sequelize) => {
     const User = sequelize.define('Users',{
-        name: {
+        id: {
+            type: DataTypes.INTEGER,
+            autoIncrement: true,
+            primaryKey: true
+        },
+        username: {
             type: DataTypes.STRING,
-            allowNull: false
+            allowNull: false,
         },
         email: {
             type: DataTypes.STRING,
             allowNull: false,
-            isLowercase: true,
-            unique: true
+            unique: true,
+            validate : {isEmail: true}
         },
-        userID: {
+        role: {
+            type: DataTypes.ENUM ('admin', 'staff', 'customer'),
+            allowNull: false,
+            defaultValue: 'customer'
+        },
+        password: {
             type: DataTypes.STRING,
             allowNull: false,
-            unique: true
+        },
+
+        refreshtoken: {
+            type: DataTypes.TEXT,
+            allowNull: true
         }
     })
 

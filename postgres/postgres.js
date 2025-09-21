@@ -18,9 +18,10 @@ let UserModel = null;
 const connection = async () => {
     try {
         await sequelize.authenticate();
-        console.log('Connection has been established successfully.');
         UserModel = await createUserModel(sequelize)
-        await sequelize.sync()
+        // await sequelize.sync()
+        // drop table + create lại
+        await sequelize.sync({force:true})
         console.log("Database Synced")
     } catch (error) {
         console.error('Unable to connect to the database:', error);
