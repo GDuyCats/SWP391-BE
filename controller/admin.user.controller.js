@@ -65,4 +65,14 @@ const deleteUsers = async (req, res) => {
     }
 }
 
-export { getUsers, createUsers, updateUsers, deleteUsers };
+const getAdminDashboard = (req, res) => {
+  console.log("✅ Admin đã truy cập vào dashboard");
+  console.log("Thông tin user từ token:", req.user);
+
+  return res.json({
+    message: "Bạn đã vào được trang admin!",
+    user: req.user,
+  });
+};
+
+export { getUsers, createUsers, updateUsers, deleteUsers, getAdminDashboard };
