@@ -37,8 +37,6 @@ const loginController = async (req, res) => {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
-    // const { password: _pw, ...safeUser } = user.get({ plain: true }); tranfer thanh javascript
-
     const accessToken = await generateAccessToken(user)
     const refreshToken = await generateRefreshToken(user)
     user.update({ refreshToken })
@@ -96,7 +94,6 @@ const logoutController = async (req, res) => {
   res.clearCookie("refreshToken");
   res.status(200).json({ message: "logout successfully" });
 };
-
 
 const profileController = async (req, res) => {
   return res.json('Profile')
