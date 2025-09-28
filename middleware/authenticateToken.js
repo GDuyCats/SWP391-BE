@@ -1,24 +1,8 @@
+import { UserModel } from '../postgres/postgres.js'
 import jswt from 'jsonwebtoken'
 import dotenv from 'dotenv'
-dotenv.config()
-import {UserModel} from '../postgres/postgres.js'
-const generateAccessToken = (user) => {
-  const payload = {
-    id: user.id,
-    role: user.role,
-    tokenVersion: user.tokenVersion, 
-  };
-  return jswt.sign(payload, process.env.JWT_SECRET_ACCESSTOKEN, { expiresIn: '10m' });
-}
 
-const generateRefreshToken = async (user) => {
-  const token = jswt.sign(
-    { username: user.username },
-    process.env.JWT_SECRET_REFRESHTOKEN,
-    { expiresIn: "15d" }
-  );
-  return token
-}
+dotenv.config()
 
 const authenticateToken = (req, res, next) => {
   try {
@@ -59,6 +43,4 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
-export {
-  generateAccessToken, generateRefreshToken, authenticateToken
-}
+export default authenticateToken

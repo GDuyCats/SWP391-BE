@@ -1,8 +1,14 @@
 import jswt from 'jsonwebtoken'
 import { UserModel } from "../postgres/postgres.js"
-import { generateAccessToken, generateRefreshToken } from "../utils/jwt.js";
+import { generateAccessToken, generateRefreshToken, generateVerifyEmailToken } from "../utils/jswt.js";
 import bcryptjs from "bcryptjs"
 import dotenv from 'dotenv'
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+import path, { dirname } from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs'
+import Mail from '../utils/mailer.js'
 dotenv.config()
 
 const registerController = async (req, res) => {
@@ -16,8 +22,26 @@ const registerController = async (req, res) => {
       ...req.body,
       password: hashedPass
     })
+    try {
+      const token = generateVerifyEmailToken(user)
+      const verifyUrl = `${process.env.API_BASE_URL}/auth/verify-email?token=${token}`;
+      let html = fs.readFileSync(path.join(__dirname, '../mail.html'), 'utf-8');
+      html = html.replace('[Email]', user.email);
+      html = html.replace('[VERIFY_URL]', verifyUrl);
+
+      const mail = new Mail();
+      mail.setTo(user.email);
+      mail.setSubject('Verify your email');
+      mail.setHTML(html);
+
+      await mail.send();
+    } catch (error) {
+      console.error('Send verify email error:', e);
+    }
     return res.status(201).json(user)
   }
+
+
 }
 
 const loginController = async (req, res) => {
@@ -37,11 +61,21 @@ const loginController = async (req, res) => {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
-    const accessToken = await generateAccessToken(user)
+    if (!user.isVerified) {
+      return res.status(403).json({ message: 'Please verify your email before logging in' });
+    }
+
+    const accessToken = generateAccessToken(user)
     const refreshToken = await generateRefreshToken(user)
-    user.update({ refreshToken })
+    await user.update({ refreshToken });
     // res.clearCookie(refreshToken)
-    res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: true })
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+    })
+
     return res.status(200).json({
       message: 'Login success',
       user: {
@@ -49,7 +83,7 @@ const loginController = async (req, res) => {
         role: user.role,
         avatar: user.avatar,
         accessToken,
-        refreshToken
+        isVerified : user.isVerified
       }
     });
 
@@ -62,20 +96,37 @@ const loginController = async (req, res) => {
 const refreshTokenController = async (req, res) => {
   const refreshToken = req.cookies.refreshToken
   try {
+
     if (!refreshToken) {
       return res.status(403).json("Token is empty")
     }
+
     const user = await UserModel.findOne({ where: { refreshToken } })
-    jswt.verify(refreshToken, process.env.JWT_SECRET_REFRESHTOKEN, async (error, decoded) => {
 
-      if (error) {
-        return res.status(403).json("Invalid Token !")
-      }
+    if (!user) {
+      return res.status(403).json("Invalid Token !");
+    }
 
-      const token = generateAccessToken(user)
-      console.log(user)
-      return res.status(200).json({ accessToken: token })
-    })
+    jswt.verify(
+      refreshToken,
+      process.env.JWT_SECRET_REFRESHTOKEN,
+      async (error, decoded) => {
+
+        if (error) {
+          return res.status(403).json("Invalid Token !")
+        }
+
+        if (!decoded?.id || decoded.id !== user.id) {
+          return res.status(403).json("Invalid Token !");
+        }
+        if (typeof decoded.tokenVersion !== 'number' || decoded.tokenVersion !== user.tokenVersion) {
+          return res.status(403).json("Token has been revoked");
+        }
+
+        const token = generateAccessToken(user)
+        return res.status(200).json({ accessToken: token })
+      })
+
   } catch (error) {
     return res.status(500).json({ error: error.message || 'Internal server error' })
   }
@@ -91,7 +142,13 @@ const logoutController = async (req, res) => {
       await user.increment("tokenVersion");
     }
   }
-  res.clearCookie("refreshToken");
+
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/',
+  });
   res.status(200).json({ message: "logout successfully" });
 };
 

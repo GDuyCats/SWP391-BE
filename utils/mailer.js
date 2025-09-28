@@ -9,7 +9,6 @@ const transporter = nodemailer.createTransport({
 })
 
 class Mail {
-
     constructor() {
         this.mailOptions = {
             from: {
@@ -51,11 +50,11 @@ class Mail {
 
     setCC(cc){
         let ccs = this.mailOptions.cc || []
-        cc.push(cc);
+        ccs.push(cc);
         this.mailOptions.cc = ccs
     }
 
-    setCC(bcc){
+    setBCC(bcc){
         let bccs = this.mailOptions.bcc || []
         bccs.push(bcc);
         this.mailOptions.bcc = bccs
@@ -93,11 +92,11 @@ class Mail {
     /**
      * @return {void}
      */
-    send() {
+    async send() {
         transporter.sendMail(this.mailOptions, (error, info) => {
             if (error) {
                 console.log(error)
-                // return res.status(500).send('Error sending email');
+                return res.status(500).send('Error sending email');
             } else {
                 console.log('Email Send : ' + info.response)
                 res.send('Email sent: ' + info.response);

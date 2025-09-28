@@ -44,8 +44,8 @@ export const createUserModel = async (sequelize) => {
         },
 
         isVerified: {
-            type: Boolean,
-            default: false
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
         },
 
         refreshToken: {
