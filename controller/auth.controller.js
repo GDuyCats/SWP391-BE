@@ -11,20 +11,70 @@ import fs from 'fs'
 import Mail from '../utils/mailer.js'
 dotenv.config()
 
+const COOLDOWN_MS = 60_000;
+const resendTracker = new Map()
+function secondsLeft(email) {
+  const last = resendTracker.get(email);
+  if (!last) return 0;
+  const left = Math.ceil((COOLDOWN_MS - (Date.now() - last)) / 1000);
+  return left > 0 ? left : 0;
+}
+
 const registerController = async (req, res) => {
-  const { username, email, password } = req.body
-  const existUser = await UserModel.findOne({ where: { email } })
-  if (existUser != null) {
-    return res.status(409).json("The user's email is already exist")
-  } else {
-    const hashedPass = await bcryptjs.hash(password, 10)
+  try {
+    // 1) Check missing field
+    const required = ['email', 'username', 'password'];
+    const missing = required.filter(
+      (k) => !req.body?.[k] || String(req.body[k]).trim() === ''
+    );
+    if (missing.length) {
+      return res.status(400).json({
+        message: `Missing required field(s): ${missing.join(', ')}`
+      });
+    }
+
+    const { email, username, password } = req.body;
+
+    // 1.5) Resend flow: nếu email đã có trong DB
+    const existing = await UserModel.findOne({ where: { email } });
+    if (existing) {
+      if (existing.isVerified) {
+        return res.status(409).json({ message: 'Email already exists' });
+      }
+      // Email đã tồn tại nhưng CHƯA verify -> gửi lại verify email
+      try {
+        const token = generateVerifyEmailToken(existing);
+        const verifyUrl = `${process.env.API_BASE_URL}/auth/verify-email?token=${token}`;
+
+        let html = fs.readFileSync(path.join(__dirname, '../mail.html'), 'utf-8');
+        html = html.replace('[Email]', existing.email);
+        html = html.replace('[VERIFY_URL]', verifyUrl);
+
+        const mail = new Mail();
+        mail.setTo(existing.email);
+        mail.setSubject('Verify your email (resend)');
+        mail.setHTML(html);
+        await mail.send();
+      } catch (error) {
+        console.error('Resend verify email error:', error);
+      }
+      return res.status(200).json({ message: 'Verification email resent. Please check your inbox.' });
+    }
+
+    // 2) Hash password
+    const hashedPass = await bcryptjs.hash(password, 10);
+
+    // 3) Create user
     const user = await UserModel.create({
       ...req.body,
-      password: hashedPass
-    })
+      password: hashedPass,
+    });
+
+    // 4) Send verify email (bắt lỗi riêng)
     try {
-      const token = generateVerifyEmailToken(user)
+      const token = generateVerifyEmailToken(user);
       const verifyUrl = `${process.env.API_BASE_URL}/auth/verify-email?token=${token}`;
+
       let html = fs.readFileSync(path.join(__dirname, '../mail.html'), 'utf-8');
       html = html.replace('[Email]', user.email);
       html = html.replace('[VERIFY_URL]', verifyUrl);
@@ -33,16 +83,80 @@ const registerController = async (req, res) => {
       mail.setTo(user.email);
       mail.setSubject('Verify your email');
       mail.setHTML(html);
-
       await mail.send();
     } catch (error) {
-      console.error('Send verify email error:', e);
+      console.error('Send verify email error:', error);
     }
-    return res.status(201).json(user)
+
+    const { password: _pw, refreshToken: _rt, ...safeUser } = user.get({ plain: true });
+    return res.status(201).json({
+      message: 'Register success. Please verify your email.',
+      user: safeUser
+    });
+
+  } catch (error) {
+    console.error('Register error:', error);
+
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(409).json({ message: 'Email already exists' });
+    }
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(400).json({ message: error.errors[0].message });
+    }
+
+    return res.status(500).json({ message: 'Register failed' });
   }
+};
 
+const resendVerifyController = async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email || String(email).trim() === '') {
+      return res.status(400).json({ message: 'Email is required' });
+    }
 
-}
+    const user = await UserModel.findOne({ where: { email } });
+
+    // YÊU CẦU CỦA BẠN: đã verify hoặc không có user => 404
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.isVerified) {
+      return res.status(404).json({ message: 'This email is already registered' });
+    }
+
+    // Rate limit 60s
+    const left = secondsLeft(email);
+    if (left > 0) {
+      return res.status(429).json({
+        message: `Please wait ${left}s before requesting another email.`,
+        retryAfter: left
+      });
+    }
+
+    const token = generateVerifyEmailToken(user);
+    const verifyUrl = `${process.env.API_BASE_URL}/auth/verify-email?token=${token}`;
+
+    let html = fs.readFileSync(path.join(__dirname, '../mail.html'), 'utf-8');
+    html = html.replace('[Email]', user.email);
+    html = html.replace('[VERIFY_URL]', verifyUrl);
+
+    const mail = new Mail();
+    mail.setTo(user.email);
+    mail.setSubject('Verify your email (resend)');
+    mail.setHTML(html);
+    await mail.send();
+
+    // cập nhật mốc thời gian đã gửi
+    resendTracker.set(email, Date.now());
+
+    return res.json({ message: 'Verification email resent. Please check your inbox.' });
+  } catch (error) {
+    console.error('Resend verify error:', error);
+    return res.status(500).json({ message: 'Resend failed' });
+  }
+};
 
 const loginController = async (req, res) => {
   const { username, password } = req.body || {};
@@ -83,7 +197,7 @@ const loginController = async (req, res) => {
         role: user.role,
         avatar: user.avatar,
         accessToken,
-        isVerified : user.isVerified
+        isVerified: user.isVerified
       }
     });
 
@@ -155,4 +269,4 @@ const logoutController = async (req, res) => {
 const profileController = async (req, res) => {
   return res.json('Profile')
 }
-export { registerController, loginController, refreshTokenController, logoutController, profileController }
+export { registerController, resendVerifyController, loginController, refreshTokenController, logoutController, profileController }
