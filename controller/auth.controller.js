@@ -116,8 +116,7 @@ const resendVerifyController = async (req, res) => {
     }
 
     const user = await UserModel.findOne({ where: { email } });
-
-    // YÊU CẦU CỦA BẠN: đã verify hoặc không có user => 404
+    
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
