@@ -265,7 +265,5 @@ const logoutController = async (req, res) => {
   res.status(200).json({ message: "logout successfully" });
 };
 
-const profileController = async (req, res) => {
-  return res.json('Profile')
-}
-export { registerController, resendVerifyController, loginController, refreshTokenController, logoutController, profileController }
+
+export { registerController, resendVerifyController, loginController, refreshTokenController, logoutController }

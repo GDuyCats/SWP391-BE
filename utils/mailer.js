@@ -96,7 +96,7 @@ class Mail {
         transporter.sendMail(this.mailOptions, (error, info) => {
             if (error) {
                 console.log(error)
-                return res.status(500).send('Error sending email');
+                // return res.status(500).send('Error sending email');
             } else {
                 console.log('Email Send : ' + info.response)
                 res.send('Email sent: ' + info.response);
