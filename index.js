@@ -54,7 +54,25 @@ app.use(user_routes);
 
 // Health & DB check
 app.get("/healthz", (req, res) => res.status(200).send("ok"));
-
+app.get("/__mailcheck", async (req, res) => {
+  try {
+    await transporter.verify();
+    const to = req.query.to || process.env.EMAIL;
+    const mail = new Mail()
+      .setTo(to)
+      .setSubject("SMTP OK")
+      .setHTML("<b>Your server can send emails ✅</b>");
+    const info = await mail.send();
+    res.json({ ok: true, id: info.messageId, response: info.response });
+  } catch (e) {
+    res.status(500).json({
+      ok: false,
+      message: e.message,
+      code: e.code,
+      response: e.response,
+    });
+  }
+});
 app.get("/__dbcheck", async (req, res) => {
   try {
     await sequelize.authenticate();

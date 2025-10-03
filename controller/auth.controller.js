@@ -66,7 +66,13 @@ const registerController = async (req, res) => {
         mail.setHTML(html);
         await mail.send();
       } catch (error) {
-        console.error('Resend verify email error:', error);
+        console.error('Resend verify email error:', {
+          message: error.message,
+          code: error.code,
+          command: error.command,
+          response: error.response,
+          stack: error.stack,
+        });
       }
       return res.status(200).json({ message: 'Verification email resent. Please check your inbox.' });
     }
@@ -99,7 +105,14 @@ const registerController = async (req, res) => {
       mail.setHTML(html);
       await mail.send();
     } catch (error) {
-      console.error('Send verify email error:', error);
+      console.error('Send verify email error:', {
+        message: error.message,
+        code: error.code,
+        command: error.command,
+        response: error.response,
+        stack: error.stack,
+      });
+
     }
 
     const { password: _pw, refreshToken: _rt, ...safeUser } = user.get({ plain: true });
@@ -131,7 +144,7 @@ const resendVerifyController = async (req, res) => {
 
     const normalizedEmail = String(email).trim().toLowerCase();   // ĐÃ SỬA
     const user = await UserModel.findOne({ where: { email: normalizedEmail } }); // ĐÃ SỬA
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
