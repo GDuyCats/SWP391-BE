@@ -10,7 +10,7 @@ const options = {
       version: "1.0.0",
       description: "API docs for SWP391",
     },
-    servers: [{ url: process.env.API_BASE_URL }],
+    servers: [{ url: "swp391-be-production.up.railway.app" }],
     components: {
       securitySchemes: {
         bearerAuth: {
