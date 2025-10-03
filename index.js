@@ -26,9 +26,21 @@ app.use(auth_routes)
 app.use(mail_routes)
 app.use(user_routes)
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-app.listen(process.env.BE_PORT, () => {
-    console.log(`Server is running at port ${process.env.BE_PORT}`)
-      console.log(`Swagger docs at ${process.env.API_BASE_URL}/api-docs`);
-})
-
-connection()
+const start = async () => {                       // ĐÃ SỬA
+  try {
+    await connection()                             // ĐÃ SỬA: thay cho connection()
+    const PORT = Number(process.env.BE_PORT) || 3000 // ĐÃ SỬA
+    const HOST = '0.0.0.0'                        // ĐÃ SỬA: cần cho Railway
+    app.listen(PORT, HOST, () => {
+      console.log(`Server is running at http://${HOST}:${PORT}`)
+      // Nếu có API_BASE_URL, in ra link Swagger thân thiện
+      const base = process.env.API_BASE_URL || `http://localhost:${PORT}` // ĐÃ SỬA
+      console.log(`Swagger docs at ${base}/api-docs`)                     // ĐÃ SỬA
+    })
+  } catch (err) {
+    console.error('Failed to start server:', err) // ĐÃ SỬA
+    process.exit(1)
+  }
+}
+start()
+export default app

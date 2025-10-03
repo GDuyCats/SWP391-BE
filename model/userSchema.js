@@ -1,6 +1,6 @@
 import { DataTypes } from "sequelize";
 
-export const createUserModel = async (sequelize) => {
+export const createUserModel = (sequelize) => {
     const User = sequelize.define('Users', {
         id: {
             type: DataTypes.INTEGER,
