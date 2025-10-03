@@ -45,8 +45,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 // ⛳ ĐÃ SỬA: preflight
-app.options("*", cors(corsOptions));
-
+app.options(/.*/, cors(corsOptions)); 
 // Routes
 app.use(admin_routes);
 app.use(auth_routes);
