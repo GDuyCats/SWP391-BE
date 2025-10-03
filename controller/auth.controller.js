@@ -3,12 +3,16 @@ import { UserModel } from "../postgres/postgres.js"
 import { generateAccessToken, generateRefreshToken, generateVerifyEmailToken } from "../utils/jswt.js";
 import bcryptjs from "bcryptjs"
 import dotenv from 'dotenv'
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-import path, { dirname } from 'path';
-import { fileURLToPath } from 'url';
+
+/* ⬇️ ĐÃ SỬA: move import lên trước rồi mới dùng __dirname (tránh lỗi đường dẫn ESM) */
+import path, { dirname } from 'path';              // ĐÃ SỬA
+import { fileURLToPath } from 'url';               // ĐÃ SỬA
 import fs from 'fs'
 import Mail from '../utils/mailer.js'
+
+const __filename = fileURLToPath(import.meta.url); // ĐÃ SỬA
+const __dirname = dirname(__filename);             // ĐÃ SỬA
+
 dotenv.config()
 
 const COOLDOWN_MS = 60_000;
@@ -33,10 +37,13 @@ const registerController = async (req, res) => {
       });
     }
 
-    const { email, username, password } = req.body;
+    /* ⬇️ ĐÃ SỬA: chuẩn hoá input, tránh user nhồi field lạ */
+    const email = String(req.body.email).trim().toLowerCase();    // ĐÃ SỬA
+    const username = String(req.body.username).trim();            // ĐÃ SỬA
+    const password = String(req.body.password);                   // ĐÃ SỬA
 
     // 1.5) Resend flow: nếu email đã có trong DB
-    const existing = await UserModel.findOne({ where: { email } });
+    const existing = await UserModel.findOne({ where: { email } }); // ĐÃ SỬA
     if (existing) {
       if (existing.isVerified) {
         return res.status(409).json({ message: 'Email already exists' });
@@ -44,11 +51,14 @@ const registerController = async (req, res) => {
       // Email đã tồn tại nhưng CHƯA verify -> gửi lại verify email
       try {
         const token = generateVerifyEmailToken(existing);
-        const verifyUrl = `${process.env.API_BASE_URL}/auth/verify-email?token=${token}`;
+
+        /* ⬇️ ĐÃ SỬA: fallback API_BASE_URL để link verify luôn đúng */
+        const base = process.env.API_BASE_URL || `${req.protocol}://${req.get('host')}`; // ĐÃ SỬA
+        const verifyUrl = `${base}/auth/verify-email?token=${token}`;                    // ĐÃ SỬA
 
         let html = fs.readFileSync(path.join(__dirname, '../mail.html'), 'utf-8');
-        html = html.replace('[Email]', existing.email);
-        html = html.replace('[VERIFY_URL]', verifyUrl);
+        html = html.replaceAll('[Email]', existing.email);        // ĐÃ SỬA
+        html = html.replaceAll('[VERIFY_URL]', verifyUrl);        // ĐÃ SỬA
 
         const mail = new Mail();
         mail.setTo(existing.email);
@@ -65,19 +75,23 @@ const registerController = async (req, res) => {
     const hashedPass = await bcryptjs.hash(password, 10);
 
     // 3) Create user
-    const user = await UserModel.create({
-      ...req.body,
-      password: hashedPass,
+    /* ⬇️ ĐÃ SỬA: chỉ ghi các field cho phép, tránh spread req.body */
+    const user = await UserModel.create({                      // ĐÃ SỬA
+      email,                                                   // ĐÃ SỬA
+      username,                                                // ĐÃ SỬA
+      password: hashedPass,                                    // ĐÃ SỬA
+      isVerified: false,                                       // ĐÃ SỬA: đảm bảo mặc định
     });
 
     // 4) Send verify email (bắt lỗi riêng)
     try {
       const token = generateVerifyEmailToken(user);
-      const verifyUrl = `${process.env.API_BASE_URL}/auth/verify-email?token=${token}`;
+      const base = process.env.API_BASE_URL || `${req.protocol}://${req.get('host')}`; // ĐÃ SỬA
+      const verifyUrl = `${base}/auth/verify-email?token=${token}`;                    // ĐÃ SỬA
 
       let html = fs.readFileSync(path.join(__dirname, '../mail.html'), 'utf-8');
-      html = html.replace('[Email]', user.email);
-      html = html.replace('[VERIFY_URL]', verifyUrl);
+      html = html.replaceAll('[Email]', user.email);           // ĐÃ SỬA
+      html = html.replaceAll('[VERIFY_URL]', verifyUrl);       // ĐÃ SỬA
 
       const mail = new Mail();
       mail.setTo(user.email);
@@ -115,7 +129,8 @@ const resendVerifyController = async (req, res) => {
       return res.status(400).json({ message: 'Email is required' });
     }
 
-    const user = await UserModel.findOne({ where: { email } });
+    const normalizedEmail = String(email).trim().toLowerCase();   // ĐÃ SỬA
+    const user = await UserModel.findOne({ where: { email: normalizedEmail } }); // ĐÃ SỬA
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -126,7 +141,7 @@ const resendVerifyController = async (req, res) => {
     }
 
     // Rate limit 60s
-    const left = secondsLeft(email);
+    const left = secondsLeft(normalizedEmail);                    // ĐÃ SỬA
     if (left > 0) {
       return res.status(429).json({
         message: `Please wait ${left}s before requesting another email.`,
@@ -135,11 +150,12 @@ const resendVerifyController = async (req, res) => {
     }
 
     const token = generateVerifyEmailToken(user);
-    const verifyUrl = `${process.env.API_BASE_URL}/auth/verify-email?token=${token}`;
+    const base = process.env.API_BASE_URL || `${req.protocol}://${req.get('host')}`; // ĐÃ SỬA
+    const verifyUrl = `${base}/auth/verify-email?token=${token}`;                    // ĐÃ SỬA
 
     let html = fs.readFileSync(path.join(__dirname, '../mail.html'), 'utf-8');
-    html = html.replace('[Email]', user.email);
-    html = html.replace('[VERIFY_URL]', verifyUrl);
+    html = html.replaceAll('[Email]', user.email);               // ĐÃ SỬA
+    html = html.replaceAll('[VERIFY_URL]', verifyUrl);           // ĐÃ SỬA
 
     const mail = new Mail();
     mail.setTo(user.email);
@@ -148,7 +164,7 @@ const resendVerifyController = async (req, res) => {
     await mail.send();
 
     // cập nhật mốc thời gian đã gửi
-    resendTracker.set(email, Date.now());
+    resendTracker.set(normalizedEmail, Date.now());              // ĐÃ SỬA
 
     return res.json({ message: 'Verification email resent. Please check your inbox.' });
   } catch (error) {
@@ -181,11 +197,12 @@ const loginController = async (req, res) => {
     const accessToken = generateAccessToken(user)
     const refreshToken = await generateRefreshToken(user)
     await user.update({ refreshToken });
-    // res.clearCookie(refreshToken)
+
+    /* ⬇️ ĐÃ SỬA: cookie cross-site chuẩn prod */
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production',                        // ĐÃ SỬA
+      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',     // ĐÃ SỬA
       path: '/',
     })
 
@@ -209,7 +226,6 @@ const loginController = async (req, res) => {
 const refreshTokenController = async (req, res) => {
   const refreshToken = req.cookies.refreshToken
   try {
-
     if (!refreshToken) {
       return res.status(403).json("Token is empty")
     }
@@ -258,12 +274,11 @@ const logoutController = async (req, res) => {
 
   res.clearCookie("refreshToken", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production',                        // ĐÃ SỬA
+    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',     // ĐÃ SỬA
     path: '/',
   });
   res.status(200).json({ message: "logout successfully" });
 };
-
 
 export { registerController, resendVerifyController, loginController, refreshTokenController, logoutController }
