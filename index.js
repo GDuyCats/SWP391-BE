@@ -1,7 +1,7 @@
 import express from 'express'
 import dotenv from "dotenv"
 import cors from 'cors'
-import { connection } from './postgres/postgres.js'
+import { connectDB } from './postgres/postgres.js'
 import admin_routes from './routes/admin.routes.js'
 import auth_routes from './routes/auth.routes.js'
 import mail_routes from './routes/mail.routes.js'
@@ -42,7 +42,7 @@ app.get("/__dbcheck", async (req, res) => {
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 const start = async () => {                       // ĐÃ SỬA
     try {
-        await connection()                             // ĐÃ SỬA: thay cho connection()
+        await connectDB()                             // ĐÃ SỬA: thay cho connection()
         const PORT = Number(process.env.BE_PORT) || 8081// ĐÃ SỬA
         const HOST = '0.0.0.0'                        // ĐÃ SỬA: cần cho Railway
         app.listen(PORT, HOST, () => {
