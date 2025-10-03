@@ -29,7 +29,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 const start = async () => {                       // ĐÃ SỬA
   try {
     await connection()                             // ĐÃ SỬA: thay cho connection()
-    const PORT = Number(process.env.BE_PORT) || 3000 // ĐÃ SỬA
+    const PORT = Number(process.env.BE_PORT) || 8081// ĐÃ SỬA
     const HOST = '0.0.0.0'                        // ĐÃ SỬA: cần cho Railway
     app.listen(PORT, HOST, () => {
       console.log(`Server is running at http://${HOST}:${PORT}`)
