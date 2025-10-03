@@ -11,9 +11,9 @@ const router = Router();
 
 /**
  * @openapi
- * /auth/register:
+ * /register:
  *   post:
- *     summary: Đăng ký tài khoản mới
+ *     summary: Make a new account
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -42,7 +42,7 @@ router.post('/register', registerController)
 
 /**
  * @openapi
- * /auth/login:
+ * /login:
  *   post:
  *     summary: Đăng nhập và nhận access token
  *     tags: [Auth]
@@ -70,7 +70,7 @@ router.post('/login', loginController)
 
 /**
  * @openapi
- * /auth/refreshtoken:
+ * /refreshtoken:
  *   post:
  *     summary: Lấy access token mới từ refresh token
  *     tags: [Auth]
@@ -95,7 +95,7 @@ router.post('/refreshtoken', refreshTokenController)
 
 /**
  * @openapi
- * /auth/logout:
+ * /logout:
  *   post:
  *     summary: Đăng xuất và xoá refresh token
  *     tags: [Auth]
@@ -109,7 +109,7 @@ router.post('/logout', logoutController)
 
 /**
  * @openapi
- * /auth/resend-verify:
+ * /resend-verify:
  *   post:
  *     summary: Gửi lại email xác thực tài khoản
  *     tags: [Auth]
