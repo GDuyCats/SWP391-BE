@@ -25,22 +25,36 @@ app.use(admin_routes)
 app.use(auth_routes)
 app.use(mail_routes)
 app.use(user_routes)
+app.get("/__dbcheck", async (req, res) => {
+    try {
+        await sequelize.authenticate();
+        const [rows] = await sequelize.query("SELECT 1 AS ok");
+        res.json({ ok: true, rows });
+    } catch (e) {
+        console.error("❌ __dbcheck:", e);
+        res.status(500).json({
+            ok: false,
+            message: e.message,
+            ...(process.env.NODE_ENV !== "production" ? { stack: e.stack } : {})
+        });
+    }
+});
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 const start = async () => {                       // ĐÃ SỬA
-  try {
-    await connection()                             // ĐÃ SỬA: thay cho connection()
-    const PORT = Number(process.env.BE_PORT) || 8081// ĐÃ SỬA
-    const HOST = '0.0.0.0'                        // ĐÃ SỬA: cần cho Railway
-    app.listen(PORT, HOST, () => {
-      console.log(`Server is running at http://${HOST}:${PORT}`)
-      // Nếu có API_BASE_URL, in ra link Swagger thân thiện
-      const base = process.env.API_BASE_URL || `http://localhost:${PORT}` // ĐÃ SỬA
-      console.log(`Swagger docs at ${base}/api-docs`)                     // ĐÃ SỬA
-    })
-  } catch (err) {
-    console.error('Failed to start server:', err) // ĐÃ SỬA
-    process.exit(1)
-  }
+    try {
+        await connection()                             // ĐÃ SỬA: thay cho connection()
+        const PORT = Number(process.env.BE_PORT) || 8081// ĐÃ SỬA
+        const HOST = '0.0.0.0'                        // ĐÃ SỬA: cần cho Railway
+        app.listen(PORT, HOST, () => {
+            console.log(`Server is running at http://${HOST}:${PORT}`)
+            // Nếu có API_BASE_URL, in ra link Swagger thân thiện
+            const base = process.env.API_BASE_URL || `http://localhost:${PORT}` // ĐÃ SỬA
+            console.log(`Swagger docs at ${base}/api-docs`)                     // ĐÃ SỬA
+        })
+    } catch (err) {
+        console.error('Failed to start server:', err) // ĐÃ SỬA
+        process.exit(1)
+    }
 }
 start()
 export default app

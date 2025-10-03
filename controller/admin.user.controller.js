@@ -11,10 +11,11 @@ const getUsers = async (req, res) => {
     }
     return res.status(200).json(users)
   } catch (error) {
-    console.log(error)
+    console.error("❌ getUsers error:", error);     // ⛳ ĐÃ SỬA: log đầy đủ
     return res.status(500).json({
-      error: error.message || 'Internal server error'
-    })
+      error: error.message || "Internal server error",
+      ...(process.env.NODE_ENV !== "production" ? { stack: error.stack } : {})
+    });
   }
 }
 
