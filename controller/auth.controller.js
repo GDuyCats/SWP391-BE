@@ -13,6 +13,14 @@ import Mail from '../utils/mailer.js'
 const __filename = fileURLToPath(import.meta.url); // ĐÃ SỬA
 const __dirname = dirname(__filename);             // ĐÃ SỬA
 
+const MAIL_TPL_PATH = path.join(__dirname, "../mail.html");
+
+const MAIL_TPL = fs.readFileSync(MAIL_TPL_PATH, "utf-8");
+function renderVerifyEmailHTML({ verifyUrl, email }) {
+  return MAIL_TPL
+    .replaceAll("[VERIFY_URL]", verifyUrl)
+    .replaceAll("[Email]", email ?? "");
+}
 dotenv.config()
 
 const COOLDOWN_MS = 60_000;
@@ -26,163 +34,170 @@ function secondsLeft(email) {
 
 const registerController = async (req, res) => {
   try {
-    // 1) Check missing field
-    const required = ['email', 'username', 'password'];
+    // 1) Validate các field bắt buộc
+    const required = ["email", "username", "password"];
     const missing = required.filter(
-      (k) => !req.body?.[k] || String(req.body[k]).trim() === ''
+      (k) => !req.body?.[k] || String(req.body[k]).trim() === ""
     );
     if (missing.length) {
       return res.status(400).json({
-        message: `Missing required field(s): ${missing.join(', ')}`
+        message: `Missing required field(s): ${missing.join(", ")}`,
       });
     }
 
-    /* ⬇️ ĐÃ SỬA: chuẩn hoá input, tránh user nhồi field lạ */
-    const email = String(req.body.email).trim().toLowerCase();    // ĐÃ SỬA
-    const username = String(req.body.username).trim();            // ĐÃ SỬA
-    const password = String(req.body.password);                   // ĐÃ SỬA
+    // 1.1) Chuẩn hoá + kiểm tra định dạng email
+    const email = String(req.body.email).trim().toLowerCase();
+    const username = String(req.body.username).trim();
+    const password = String(req.body.password);
+    const emailRe = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
+    if (!emailRe.test(email)) {
+      return res.status(400).json({ message: "Invalid email format" });
+    }
 
-    // 1.5) Resend flow: nếu email đã có trong DB
-    const existing = await UserModel.findOne({ where: { email } }); // ĐÃ SỬA
+    // 1.5) Nếu email đã tồn tại
+    const existing = await UserModel.findOne({ where: { email } });
     if (existing) {
       if (existing.isVerified) {
-        return res.status(409).json({ message: 'Email already exists' });
+        return res.status(409).json({ message: "Email already exists" });
       }
-      // Email đã tồn tại nhưng CHƯA verify -> gửi lại verify email
       try {
         const token = generateVerifyEmailToken(existing);
+        const base = process.env.API_BASE_URL || `${req.protocol}://${req.get("host")}`;
+        const verifyUrl = `${base}/auth/verify-email?token=${token}`;
 
-        /* ⬇️ ĐÃ SỬA: fallback API_BASE_URL để link verify luôn đúng */
-        const base = process.env.API_BASE_URL || `${req.protocol}://${req.get('host')}`; // ĐÃ SỬA
-        const verifyUrl = `${base}/auth/verify-email?token=${token}`;                    // ĐÃ SỬA
-
-        let html = fs.readFileSync(path.join(__dirname, '../mail.html'), 'utf-8');
-        html = html.replaceAll('[Email]', existing.email);        // ĐÃ SỬA
-        html = html.replaceAll('[VERIFY_URL]', verifyUrl);        // ĐÃ SỬA
+        // dùng template
+        const html = renderVerifyEmailHTML({ verifyUrl, email: existing.email });
 
         const mail = new Mail();
         mail.setTo(existing.email);
-        mail.setSubject('Verify your email (resend)');
+        mail.setSubject("Verify your email (resend)");
         mail.setHTML(html);
+        if (mail.setText) mail.setText(`Verify your email: ${verifyUrl}`);
         await mail.send();
       } catch (error) {
-        console.error('Resend verify email error:', {
-          message: error.message,
-          code: error.code,
-          command: error.command,
-          response: error.response,
-          stack: error.stack,
+        console.error("Resend verify email error:", {
+          message: error.message, code: error.code, command: error.command,
+          response: error.response, stack: error.stack,
         });
       }
-      return res.status(200).json({ message: 'Verification email resent. Please check your inbox.' });
+      return res
+        .status(200)
+        .json({ message: "Verification email resent. Please check your inbox." });
     }
 
     // 2) Hash password
     const hashedPass = await bcryptjs.hash(password, 10);
 
-    // 3) Create user
-    /* ⬇️ ĐÃ SỬA: chỉ ghi các field cho phép, tránh spread req.body */
-    const user = await UserModel.create({                      // ĐÃ SỬA
-      email,                                                   // ĐÃ SỬA
-      username,                                                // ĐÃ SỬA
-      password: hashedPass,                                    // ĐÃ SỬA
-      isVerified: false,                                       // ĐÃ SỬA: đảm bảo mặc định
+    // 3) Tạo user
+    const user = await UserModel.create({
+      email,
+      username,
+      password: hashedPass,
+      isVerified: false,
     });
 
-    // 4) Send verify email (bắt lỗi riêng)
+    // 4) Gửi verify email — ⬇️ ĐÃ THAY ĐOẠN BẠN YÊU CẦU
     try {
       const token = generateVerifyEmailToken(user);
-      const base = process.env.API_BASE_URL || `${req.protocol}://${req.get('host')}`; // ĐÃ SỬA
-      const verifyUrl = `${base}/auth/verify-email?token=${token}`;                    // ĐÃ SỬA
+      const base = process.env.API_BASE_URL || `${req.protocol}://${req.get("host")}`;
+      const verifyUrl = `${base}/auth/verify-email?token=${token}`;
 
-      let html = fs.readFileSync(path.join(__dirname, '../mail.html'), 'utf-8');
-      html = html.replaceAll('[Email]', user.email);           // ĐÃ SỬA
-      html = html.replaceAll('[VERIFY_URL]', verifyUrl);       // ĐÃ SỬA
+      const html = renderVerifyEmailHTML({ verifyUrl, email: user.email });
 
       const mail = new Mail();
       mail.setTo(user.email);
-      mail.setSubject('Verify your email');
+      mail.setSubject("Verify your email");
       mail.setHTML(html);
+      if (mail.setText) mail.setText(`Verify your email: ${verifyUrl}`);
       await mail.send();
     } catch (error) {
-      console.error('Send verify email error:', {
-        message: error.message,
-        code: error.code,
-        command: error.command,
-        response: error.response,
-        stack: error.stack,
+      console.error("Send verify email error:", {
+        message: error.message, code: error.code, command: error.command,
+        response: error.response, stack: error.stack,
       });
-
     }
 
+    // 5) Response
     const { password: _pw, refreshToken: _rt, ...safeUser } = user.get({ plain: true });
+    const expose = process.env.NODE_ENV !== "production" || process.env.EXPOSE_VERIFY_LINK === "true";
     return res.status(201).json({
-      message: 'Register success. Please verify your email.',
-      user: safeUser
+      message: "Register success. Please verify your email.",
+      ...(expose ? { verifyUrl: `${process.env.API_BASE_URL || `${req.protocol}://${req.get("host")}`}/auth/verify-email?token=${generateVerifyEmailToken(user)}` } : {}),
+      user: safeUser,
     });
-
   } catch (error) {
-    console.error('Register error:', error);
-
-    if (error.name === 'SequelizeUniqueConstraintError') {
-      return res.status(409).json({ message: 'Email already exists' });
+    console.error("Register error:", error);
+    if (error.name === "SequelizeUniqueConstraintError") {
+      return res.status(409).json({ message: "Email already exists" });
     }
-    if (error.name === 'SequelizeValidationError') {
+    if (error.name === "SequelizeValidationError") {
       return res.status(400).json({ message: error.errors[0].message });
     }
-
-    return res.status(500).json({ message: 'Register failed' });
+    return res.status(500).json({ message: "Register failed" });
   }
 };
 
 const resendVerifyController = async (req, res) => {
   try {
-    const { email } = req.body || {};
-    if (!email || String(email).trim() === '') {
-      return res.status(400).json({ message: 'Email is required' });
+    // 1) Validate email
+    const raw = req.body?.email;
+    const email = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+    const emailRe = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
+    if (!email || !emailRe.test(email)) {
+      return res.status(400).json({ message: "Valid email is required" });
     }
 
-    const normalizedEmail = String(email).trim().toLowerCase();   // ĐÃ SỬA
-    const user = await UserModel.findOne({ where: { email: normalizedEmail } }); // ĐÃ SỬA
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
+    // 2) Tìm user
+    const user = await UserModel.findOne({ where: { email } });
+    if (!user) return res.status(404).json({ message: "User not found" });
     if (user.isVerified) {
-      return res.status(404).json({ message: 'This email is already registered' });
+      return res.status(409).json({ message: "This email is already registered" });
     }
 
-    // Rate limit 60s
-    const left = secondsLeft(normalizedEmail);                    // ĐÃ SỬA
+    // 3) Rate limit 60s
+    const left = secondsLeft(email);
     if (left > 0) {
       return res.status(429).json({
         message: `Please wait ${left}s before requesting another email.`,
-        retryAfter: left
+        retryAfter: left,
       });
     }
 
+    // 4) Tạo link verify (absolute URL)
     const token = generateVerifyEmailToken(user);
-    const base = process.env.API_BASE_URL || `${req.protocol}://${req.get('host')}`; // ĐÃ SỬA
-    const verifyUrl = `${base}/auth/verify-email?token=${token}`;                    // ĐÃ SỬA
+    const base = process.env.API_BASE_URL || `${req.protocol}://${req.get("host")}`;
+    const verifyUrl = `${base}/auth/verify-email?token=${token}`;
 
-    let html = fs.readFileSync(path.join(__dirname, '../mail.html'), 'utf-8');
-    html = html.replaceAll('[Email]', user.email);               // ĐÃ SỬA
-    html = html.replaceAll('[VERIFY_URL]', verifyUrl);           // ĐÃ SỬA
+    // 5) Render HTML từ template của bạn
+    const html = renderVerifyEmailHTML({ verifyUrl, email: user.email });
 
-    const mail = new Mail();
-    mail.setTo(user.email);
-    mail.setSubject('Verify your email (resend)');
-    mail.setHTML(html);
+    // 6) Gửi email (Resend)
+    const mail = new Mail()
+      .setTo(user.email)
+      .setSubject("Verify your email (resend)")
+      .setHTML(html);
+    if (mail.setText) mail.setText(`Verify your email: ${verifyUrl}`);
     await mail.send();
 
-    // cập nhật mốc thời gian đã gửi
-    resendTracker.set(normalizedEmail, Date.now());              // ĐÃ SỬA
+    // 7) Cập nhật rate-limit & response
+    resendTracker.set(email, Date.now());
+    const expose =
+      process.env.NODE_ENV !== "production" ||
+      process.env.EXPOSE_VERIFY_LINK === "true";
 
-    return res.json({ message: 'Verification email resent. Please check your inbox.' });
+    return res.json({
+      message: "Verification email resent. Please check your inbox.",
+      ...(expose ? { verifyUrl } : {}),
+    });
   } catch (error) {
-    console.error('Resend verify error:', error);
-    return res.status(500).json({ message: 'Resend failed' });
+    console.error("Resend verify error:", {
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      stack: error.stack,
+    });
+    return res.status(500).json({ message: "Resend failed" });
   }
 };
 
