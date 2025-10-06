@@ -5,7 +5,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./docs/swagger.js";
-import Mail, { transporter } from "./utils/mailer.js";
+import Mail from "./utils/mailer.js";
 // ⛳ ĐÃ SỬA: import thêm sequelize để dùng ở /__dbcheck
 import { connectDB, sequelize } from "./postgres/postgres.js";
 
