@@ -56,21 +56,15 @@ app.use(user_routes);
 app.get("/healthz", (req, res) => res.status(200).send("ok"));
 app.get("/__mailcheck", async (req, res) => {
   try {
-    await transporter.verify();
-    const to = req.query.to || process.env.EMAIL;
+    const to = req.query.to || process.env.TEST_TO || "<your email>";
     const mail = new Mail()
       .setTo(to)
-      .setSubject("SMTP OK")
-      .setHTML("<b>Your server can send emails ✅</b>");
+      .setSubject("Resend OK")
+      .setHTML("<b>Your server can send emails ✅ via Resend</b>");
     const info = await mail.send();
-    res.json({ ok: true, id: info.messageId, response: info.response });
+    res.json({ ok: true, id: info?.id });
   } catch (e) {
-    res.status(500).json({
-      ok: false,
-      message: e.message,
-      code: e.code,
-      response: e.response,
-    });
+    res.status(500).json({ ok: false, message: e.message });
   }
 });
 app.get("/__dbcheck", async (req, res) => {

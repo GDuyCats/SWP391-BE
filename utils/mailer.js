@@ -1,67 +1,42 @@
-// utils/mailer.js
-import nodemailer from "nodemailer";
-import dns from "node:dns";
+// utils/mailer.js — dùng Resend API thay cho SMTP
+import { Resend } from "resend";
 
-// Ép IPv4 để tránh ENETUNREACH nếu hạ tầng không có IPv6
-dns.setDefaultResultOrder?.("ipv4first");
+const resend = new Resend(process.env.RESEND_API_KEY);
+const FROM = process.env.RESEND_FROM || "2NDEV <onboarding@resend.dev>";
 
-// Gmail: nên dùng App Password 16 ký tự
-const user = process.env.EMAIL;
-const pass = process.env.PASSWORD;
-
-export const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: { user, pass },
-  logger: process.env.SMTP_DEBUG === "true", // bật log nội bộ khi cần
-  debug: process.env.SMTP_DEBUG === "true",
-  // timeout nhẹ cho network
-  connectionTimeout: 10000,
-});
-
-class Mail {
+export default class Mail {
   constructor() {
-    this.mailOptions = {
-      from: { name: "2NDEV", address: user }, // FROM nên trùng user với Gmail
-      to: [],
-    };
+    this.mailOptions = { from: FROM, to: [] };
   }
-
-  setCompanyName(name) { this.mailOptions.from.name = name; return this; }
-  setSenderEmail(email) { this.mailOptions.from.address = email; return this; }
-  setTo(receiver) {
-    const list = this.mailOptions.to || [];
-    if (Array.isArray(receiver)) list.push(...receiver);
-    else list.push(receiver);
-    this.mailOptions.to = list;
-    return this;
-  }
-  setCC(cc)  { const l = this.mailOptions.cc  || []; Array.isArray(cc)? l.push(...cc)  : l.push(cc);  this.mailOptions.cc  = l; return this; }
-  setBCC(bcc){ const l = this.mailOptions.bcc || []; Array.isArray(bcc)? l.push(...bcc): l.push(bcc); this.mailOptions.bcc = l; return this; }
+  setCompanyName(name) { this.mailOptions.from = `${name} <${FROM.match(/<(.*)>/)?.[1] || FROM}>`; return this; }
+  setSenderEmail(email) { this.mailOptions.from = `${this.mailOptions.from.split(" <")[0]} <${email}>`; return this; }
+  setTo(receiver) { const l = this.mailOptions.to || []; Array.isArray(receiver) ? l.push(...receiver) : l.push(receiver); this.mailOptions.to = l; return this; }
+  setCC(cc)  { this.mailOptions.cc  = [...(this.mailOptions.cc  || []), ...(Array.isArray(cc)?cc:[cc])]; return this; }
+  setBCC(bcc){ this.mailOptions.bcc = [...(this.mailOptions.bcc || []), ...(Array.isArray(bcc)?bcc:[bcc])]; return this; }
   setSubject(subject) { this.mailOptions.subject = subject; return this; }
-  setText(text)       { this.mailOptions.text = text; return this; }
-  setHTML(html)       { this.mailOptions.html = html; return this; }
+  setText(text) { this.mailOptions.text = text; return this; }
+  setHTML(html) { this.mailOptions.html = html; return this; }
 
   async send() {
     try {
-      await transporter.verify(); // test kết nối + auth
-      const info = await transporter.sendMail(this.mailOptions);
-      console.log("📧 Email sent:", {
+      const { data, error } = await resend.emails.send({
+        from: this.mailOptions.from,
         to: this.mailOptions.to,
-        id: info.messageId,
-        response: info.response,
+        cc: this.mailOptions.cc,
+        bcc: this.mailOptions.bcc,
+        subject: this.mailOptions.subject,
+        html: this.mailOptions.html,
+        text: this.mailOptions.text,
       });
-      return info;
-    } catch (error) {
-      console.error("❌ SMTP send error:", {
-        message: error.message,
-        code: error.code,
-        command: error.command,
-        response: error.response,
-        stack: error.stack,
-      });
-      throw error; // để controller catch và trả 500
+      if (error) {
+        console.error("❌ Email API error:", error);
+        throw new Error(error.message || "Email API failed");
+      }
+      console.log("📧 Email sent:", data?.id);
+      return data;
+    } catch (err) {
+      console.error("❌ Email send failed:", { message: err.message, stack: err.stack });
+      throw err;
     }
   }
 }
-
-export default Mail;
