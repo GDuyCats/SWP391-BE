@@ -3,7 +3,7 @@ import { Op, Sequelize } from "sequelize";
 import { PostModel, UserModel } from "../postgres/postgres.js";
 
 const VIP_FIRST = Sequelize.literal(`CASE WHEN "type" = 'vip' THEN 0 ELSE 1 END`);
-
+const VALID_CATEGORIES = ["battery", "vehicle"];
 export const listAdvancedPublicPosts = async (req, res) => {
   try {
     const {
@@ -16,7 +16,8 @@ export const listAdvancedPublicPosts = async (req, res) => {
       sort = "vip_newest",  // 'vip_newest' | 'vip_oldest' | 'price_asc' | 'price_desc'
       page = "1",
       pageSize = "10",
-      includeUnverified,    // 'true' nếu muốn cả nonverify (mặc định false)
+      includeUnverified,
+      category,   // 'true' nếu muốn cả nonverify (mặc định false)
     } = req.query;
 
     const pageNum = Math.max(parseInt(page, 10) || 1, 1);
@@ -35,7 +36,9 @@ export const listAdvancedPublicPosts = async (req, res) => {
     }
 
     if (type === "vip" || type === "nonvip") where.type = type;
-
+    if (VALID_CATEGORIES.includes(category)) {
+      where.category = category;                 // ✅ filter theo category
+    }
     if (minPrice || maxPrice) {
       where.price = {};
       if (minPrice) where.price[Op.gte] = Number(minPrice);

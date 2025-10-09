@@ -40,10 +40,15 @@ export const createPostModel = (sequelize) => {
       allowNull: false,
       defaultValue: "nonvip",
     },
-     verifyStatus: {
+    verifyStatus: {
       type: DataTypes.ENUM("verify", "nonverify"),
       allowNull: false,
       defaultValue: "nonverify",
+    },
+    category: {
+      type: DataTypes.ENUM("battery", "vehicle"),
+      allowNull: false,
+      defaultValue: "vehicle",   // mặc định là vehicle
     },
   });
 

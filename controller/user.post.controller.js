@@ -20,7 +20,7 @@ const createMyPost = async (req, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: "Chưa đăng nhập" });
 
-    const { title, content, thumbnail, image, price, phone, type } = req.body ?? {};
+    const { title, content, thumbnail, image, price, phone, type, category } = req.body ?? {};
     if (!title?.trim()) return res.status(400).json({ message: "title là bắt buộc" });
     if (!content?.trim()) return res.status(400).json({ message: "content là bắt buộc" });
 
@@ -41,6 +41,7 @@ const createMyPost = async (req, res) => {
       phone: phone ? String(phone) : null,
       type: VALID_TYPES.includes(type) ? type : "nonvip",
       // ✅ luôn mặc định nonverify khi tạo
+      category: category && ["battery", "vehicle"].includes(category) ? category : "vehicle",
       verifyStatus: "nonverify",
     });
 
@@ -61,7 +62,7 @@ const updateMyPost = async (req, res) => {
     if (!post) return res.status(404).json({ message: "Không tìm thấy post" });
     if (post.userId !== userId) return res.status(403).json({ message: "Bạn không có quyền sửa post này" });
 
-    const { title, content, thumbnail, image, price, phone, type, verifyStatus } = req.body ?? {};
+    const { title, content, thumbnail, image, price, phone, type, verifyStatus, category } = req.body ?? {};
 
     if (title !== undefined) {
       if (!String(title).trim()) return res.status(400).json({ message: "title không được rỗng" });
@@ -87,7 +88,12 @@ const updateMyPost = async (req, res) => {
       if (!VALID_TYPES.includes(type)) return res.status(400).json({ message: "type phải là 'vip' hoặc 'nonvip'" });
       post.type = type;
     }
-
+    if (category !== undefined) {
+      if (!["battery", "vehicle"].includes(category)) {
+        return res.status(400).json({ message: "category phải là 'battery' hoặc 'vehicle'" });
+      }
+      post.category = category;
+    }
     // ✅ CHÚ Ý: Nếu bạn muốn chỉ admin/mod duyệt thì kiểm tra role ở đây rồi mới cho đổi.
     if (verifyStatus !== undefined) {
       if (!VALID_VERIFY.includes(verifyStatus))
