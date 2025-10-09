@@ -1,15 +1,12 @@
-// postgres/postgres.js
 import { Sequelize } from "sequelize";
 import dotenv from "dotenv";
 import dns from "node:dns";
 import { createUserModel } from "../model/userSchema.js";
+import { createPostModel } from "../model/listsSchema.js"; // 👈 import Post model
 
 dotenv.config();
 
-// Ép Node ưu tiên IPv4 (tránh ENETUNREACH khi môi trường không có IPv6)
 dns.setDefaultResultOrder?.("ipv4first");
-
-// Ưu tiên URL Pooler nếu có, fallback sang DATABASE_URL thường
 const DB_URL = process.env.DATABASE_URL_POOLED || process.env.DATABASE_URL;
 if (!DB_URL) {
   throw new Error(
@@ -25,19 +22,20 @@ export const sequelize = new Sequelize(DB_URL, {
   protocol: "postgres",
   host: u.hostname,
   port: Number(u.port) || 5432,
-  // BẮT BUỘC với Supabase: SSL + servername (SNI) để TLS hợp lệ
   dialectOptions: {
     ssl: { require: true, rejectUnauthorized: false, servername: u.hostname },
   },
-  // Bật log SQL khi cần: đặt SQL_LOG=true trong env
   logging: process.env.SQL_LOG === "true" ? console.log : false,
 });
 
-// Khởi tạo model NGAY để tránh UserModel=null
+// ===== Models =====
 export const UserModel = createUserModel(sequelize);
+export const PostModel = createPostModel(sequelize); // 👈 khởi tạo Post
 
-// Kết nối + sync schema
-// Dev: alter (mặc định). Prod: tránh force. Muốn reset sạch => SYNC_STRATEGY=force
+// ===== Associations =====
+UserModel.hasMany(PostModel, { foreignKey: "userId", onDelete: "CASCADE" });
+PostModel.belongsTo(UserModel, { foreignKey: "userId" });
+
 export const connectDB = async () => {
   await sequelize.authenticate();
   const strategy = (process.env.SYNC_STRATEGY || "alter").toLowerCase();
@@ -50,5 +48,4 @@ export const connectDB = async () => {
   console.log("✅ Database connected & synced");
 };
 
-// Giữ alias cho code cũ (nếu bạn đang gọi connection())
 export const connection = connectDB;

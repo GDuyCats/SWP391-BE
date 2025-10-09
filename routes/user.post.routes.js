@@ -1,0 +1,10 @@
+import { Router } from "express";
+import authenticateToken from "../middleware/authenticateToken.js";
+import { createMyPost, updateMyPost, deleteMyPost, getMyPosts, getUserPosts } from "../controller/user.post.controller.js";
+const router = Router();
+router.post("/create", authenticateToken, createMyPost);
+router.patch("/post/:id", authenticateToken, updateMyPost);
+router.delete("/delete/:id", authenticateToken, deleteMyPost);
+router.get("/me/post", authenticateToken, getMyPosts);
+router.get("/user/:userId", authenticateToken, getUserPosts);
+export default router;
