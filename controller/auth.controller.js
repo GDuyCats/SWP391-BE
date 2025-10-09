@@ -141,63 +141,88 @@ const resendVerifyController = async (req, res) => {
   try {
     // 1) Validate email
     const raw = req.body?.email;
-    const email = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+    const email = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
     const emailRe = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
     if (!email || !emailRe.test(email)) {
-      return res.status(400).json({ message: "Valid email is required" });
+      return res.status(400).json({ message: 'Valid email is required' });
     }
 
     // 2) Tìm user
     const user = await UserModel.findOne({ where: { email } });
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) return res.status(404).json({ message: 'User not found' });
     if (user.isVerified) {
-      return res.status(409).json({ message: "This email is already registered" });
+      return res.status(409).json({ message: 'This email is already registered' });
     }
 
     // 3) Rate limit 60s
-    const left = secondsLeft(email);
+    const left = secondsLeft(email); // <- đảm bảo helper tồn tại
     if (left > 0) {
+      res.set('Retry-After', String(left));
       return res.status(429).json({
         message: `Please wait ${left}s before requesting another email.`,
         retryAfter: left,
       });
     }
 
-    // 4) Tạo link verify (absolute URL)
-    const token = generateVerifyEmailToken(user);
-    const base = process.env.API_BASE_URL || `${req.protocol}://${req.get("host")}`;
+    // 4) Verify env cho gửi mail
+    if (!process.env.RESEND_API_KEY) {
+      return res.status(500).json({ message: 'Missing RESEND_API_KEY' });
+    }
+    if (!MAIL_FROM || !/@/.test(MAIL_FROM)) {
+      return res.status(500).json({ message: 'MAIL_FROM is not set or invalid' });
+    }
+
+    // 5) Tạo verify URL (absolute)
+    const token = generateVerifyEmailToken(user); // <- đảm bảo không throw vì thiếu secret
+    const base =
+      process.env.API_BASE_URL ||
+      `${req.protocol}://${req.get('host')}`;
     const verifyUrl = `${base}/auth/verify-email?token=${token}`;
 
-    // 5) Render HTML từ template của bạn
+    // 6) Render HTML
     const html = renderVerifyEmailHTML({ verifyUrl, email: user.email });
 
-    // 6) Gửi email (Resend)
-    const mail = new Mail()
-      .setTo(user.email)
-      .setSubject("Verify your email (resend)")
-      .setHTML(html);
-    if (mail.setText) mail.setText(`Verify your email: ${verifyUrl}`);
-    await mail.send();
+    // 7) Gửi email qua Resend SDK
+    try {
+      const result = await resend.emails.send({
+        from: MAIL_FROM,                 // BẮT BUỘC: domain đã verify trên Resend
+        to: user.email,
+        subject: 'Verify your email (resend)',
+        html,
+        text: `Verify your email: ${verifyUrl}`,
+      });
+      // Optional: kiểm tra result.error
+      if (result?.error) {
+        console.error('Resend send error:', result.error);
+        return res.status(502).json({ message: 'Email provider failed', detail: result.error });
+      }
+    } catch (e) {
+      console.error('RESEND ERROR:', e?.statusCode, e?.message, e?.name, e?.response?.body || e);
+      return res.status(502).json({
+        message: 'Email provider failed',
+        detail: e?.response?.body || e?.message || 'Unknown email error',
+      });
+    }
 
-    // 7) Cập nhật rate-limit & response
+    // 8) Cập nhật rate-limit & response
     resendTracker.set(email, Date.now());
     const expose =
-      process.env.NODE_ENV !== "production" ||
-      process.env.EXPOSE_VERIFY_LINK === "true";
+      process.env.NODE_ENV !== 'production' ||
+      process.env.EXPOSE_VERIFY_LINK === 'true';
 
     return res.json({
-      message: "Verification email resent. Please check your inbox.",
+      message: 'Verification email resent. Please check your inbox.',
       ...(expose ? { verifyUrl } : {}),
     });
   } catch (error) {
-    console.error("Resend verify error:", {
+    console.error('Resend verify error:', {
       message: error.message,
       code: error.code,
       command: error.command,
       response: error.response,
       stack: error.stack,
     });
-    return res.status(500).json({ message: "Resend failed" });
+    return res.status(500).json({ message: 'Resend failed' });
   }
 };
 

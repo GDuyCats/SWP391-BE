@@ -15,7 +15,7 @@ import mail_routes from "./routes/mail.routes.js";
 import user_routes from "./routes/user.routes.js";
 import user_post_routes from "./routes/user.post.routes.js"
 import post_public_router from "./routes/post.public.router.js"
-
+import post_verify_routes from "./routes/post.verify.routes.js"
 dotenv.config();
 
 const app = express();
@@ -55,6 +55,7 @@ app.use(mail_routes);
 app.use(user_routes);
 app.use(user_post_routes)
 app.use(post_public_router)
+app.use(post_verify_routes)
 // Health & DB check
 // app.get("/healthz", (req, res) => res.status(200).send("ok"));
 // app.get("/__mailcheck", async (req, res) => {
