@@ -6,7 +6,7 @@ const router = Router();
 // GET /api/posts/public?q=iphone&page=1&pageSize=12
 /**
  * @openapi
- * /api/posts:
+ * /:
  *   get:
  *     tags:
  *       - Posts (Public Search)
