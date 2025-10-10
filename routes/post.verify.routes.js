@@ -2,7 +2,7 @@
 import { Router } from "express";
 import authenticateToken from "../middleware/authenticateToken.js";
 import { getAllPosts, verifyPost } from "../controller/admin.staff.post.verify.controller.js";
-import isStaff from "../middleware/isSTaff.js";
+import isStaff from "../middleware/isStaff.js";
 import isStaffOrAdmin from "../middleware/isStaffAndAdmin.js";
 
 const router = Router();
