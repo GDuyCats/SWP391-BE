@@ -3,15 +3,15 @@
  * /admin/user:
  *   get:
  *     tags: [Admin]
- *     summary: Lấy danh sách tất cả user
+ *     summary: Get all users
  *     responses:
- *       200: { description: Danh sách user }
- *       403: { description: Không có quyền }
+ *       200: { description: Get all users successfully ! }
+ *       403: { description: Not authorized !} 
  *
  * /admin/create_user:
  *   post:
  *     tags: [Admin]
- *     summary: Tạo user mới
+ *     summary: Create a new user. Default password is 123456789
  *     requestBody:
  *       required: true
  *       content:
@@ -25,12 +25,12 @@
  *               password: { type: string, format: password }
  *               role: { type: string, enum: [admin, staff, customer] }
  *     responses:
- *       201: { description: User đã được tạo }
+ *       201: { description: Create user successfully !}
  *
  * /admin/user/{id}:
  *   put:
  *     tags: [Admin]
- *     summary: Cập nhật user
+ *     summary: Update user
  *     parameters:
  *       - in: path
  *         name: id
@@ -49,11 +49,11 @@
  *               avatar: { type: string }
  *     responses:
  *       200: { description: OK }
- *       404: { description: Không tìm thấy user }
+ *       404: { description: User's id not found }
  *
  *   delete:
  *     tags: [Admin]
- *     summary: Xoá user
+ *     summary: Delete user
  *     parameters:
  *       - in: path
  *         name: id
@@ -61,17 +61,17 @@
  *         schema: { type: integer }
  *     responses:
  *       200: { description: OK }
- *       404: { description: Không tìm thấy user }
+ *       404: { description: User's id not found }
  *
  * /admin/dashboard:
  *   get:
  *     tags: [Admin]
- *     summary: Lấy dashboard
+ *     summary: get in Dashboard page 
  *     responses:
  *       200:
  *         description: OK
  *       403:
- *         description: Không có quyền
+ *         description: Not authorized !
  */
 
 import express from "express"

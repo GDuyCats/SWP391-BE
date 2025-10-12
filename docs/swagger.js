@@ -46,11 +46,11 @@ const options = {
     // Áp dụng Bearer cho mặc định tất cả API (endpoint public có thể override: `security: []`)
     security: [{ bearerAuth: [] }],
     tags: [
-      { name: "Admin", description: "Quản trị người dùng & dashboard" },
-      { name: "Posts (Public Search)", description: "Tìm kiếm bài đăng công khai" },
-      { name: "Posts (Verify)", description: "Duyệt bài cho staff/admin" },
-      { name: "Users", description: "API người dùng" },
-      { name: "Auth", description: "Xác thực & đăng nhập" },
+      { name: "Admin", description: "Admin manage everything" },
+      { name: "Posts (Public Search)", description: "Find all post which are verified " },
+      { name: "Posts (Verify)", description: "Verify all post for staff" },
+      { name: "Users", description: "API for users" },
+      { name: "Auth", description: "Authorization and login " },
     ],
   },
 

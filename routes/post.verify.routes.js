@@ -7,7 +7,49 @@ import isStaffOrAdmin from "../middleware/isStaffAndAdmin.js";
 
 const router = Router();
 
-// Staff/Admin duyệt bài
+/**
+ * @openapi
+ * /{id}/verify:
+ *   patch:
+ *     summary: Staff or Admin verify a post
+ *     tags: [Posts (Verify)]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the post to verify
+ *     responses:
+ *       200:
+ *         description: Post verified successfully
+ *       403:
+ *         description: Forbidden - user is not authorized
+ *       404:
+ *         description: Post not found
+ *       500:
+ *         description: Internal server error
+ */
 router.patch("/:id/verify", authenticateToken, isStaff, verifyPost);
-router.get("/all", authenticateToken,isStaffOrAdmin, getAllPosts)
+
+/**
+ * @openapi
+ * /all:
+ *   get:
+ *     summary: Get all posts for staff or admin
+ *     tags: [Posts (Verify)]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved all posts
+ *       403:
+ *         description: Forbidden - user is not authorized
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/all", authenticateToken, isStaffOrAdmin, getAllPosts);
+
 export default router;

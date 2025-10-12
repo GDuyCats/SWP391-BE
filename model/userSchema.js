@@ -10,6 +10,8 @@ export const createUserModel = (sequelize) => {
         username: {
             type: DataTypes.STRING,
             allowNull: false,
+            unique: true,
+            validate: { len: [3, 50] },
         },
 
         phone: {

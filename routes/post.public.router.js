@@ -10,82 +10,78 @@ const router = Router();
  *   get:
  *     tags:
  *       - Posts (Public Search)
- *     summary: Tìm bài đăng (ưu tiên VIP, chỉ verify mặc định)
+ *     summary: Find post (prioritize VIP, only fetch Post with isVerify = true)
  *     description: |
- *       Trả về danh sách bài đăng đã verify, ưu tiên `vip` trước, sau đó sắp theo thời gian (mặc định mới nhất).
- *       Hỗ trợ tìm kiếm theo từ khóa, lọc theo loại bài (vip/nonvip), danh mục (battery/vehicle),
- *       khoảng giá, khoảng thời gian, và phân trang.
- *       Dùng `includeUnverified=true` để thấy cả bài chưa verify (nên bảo vệ bằng middleware).
+ *       Returns a list of verified posts, prioritizing `vip` first, then sorted by time (default: newest).
+ *       Supports keyword search, filtering by post type (vip/nonvip), category (battery/vehicle),
+ *       price range, date range, and pagination.
+ *
  *     parameters:
  *       - in: query
  *         name: q
  *         schema: { type: string }
- *         description: Từ khóa tìm trong title và content (không phân biệt hoa thường)
+ *         description: Keyword to search in title and content (case-insensitive)
  *       - in: query
  *         name: type
  *         schema:
  *           type: string
  *           enum: [vip, nonvip]
- *         description: Lọc theo loại bài (VIP / Non-VIP)
+ *         description: Filter by post type (VIP / Non-VIP)
  *       - in: query
  *         name: category
  *         schema:
  *           type: string
  *           enum: [battery, vehicle]
- *         description: Lọc theo danh mục (pin/xe điện)
+ *         description: Filter by category (battery/vehicle)
  *       - in: query
  *         name: minPrice
  *         schema: { type: number, format: float, minimum: 0 }
- *         description: Giá tối thiểu
+ *         description: Minimum price
  *       - in: query
  *         name: maxPrice
  *         schema: { type: number, format: float, minimum: 0 }
- *         description: Giá tối đa
+ *         description: Maximum price
  *       - in: query
  *         name: dateFrom
  *         schema: { type: string, format: date }
- *         description: Ngày bắt đầu (YYYY-MM-DD)
+ *         description: Start date (YYYY-MM-DD)
  *       - in: query
  *         name: dateTo
  *         schema: { type: string, format: date }
- *         description: Ngày kết thúc (YYYY-MM-DD)
+ *         description: End date (YYYY-MM-DD)
  *       - in: query
  *         name: sort
  *         schema:
  *           type: string
  *           enum: [vip_newest, vip_oldest, price_asc, price_desc]
  *           default: vip_newest
- *         description: Cách sắp xếp kết quả
+ *         description: Sort order
  *       - in: query
  *         name: page
  *         schema: { type: integer, minimum: 1, default: 1 }
- *         description: Trang hiện tại
+ *         description: Current page
  *       - in: query
  *         name: pageSize
  *         schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
- *         description: Kích thước trang
- *       - in: query
- *         name: includeUnverified
- *         schema: { type: string, enum: [true, false] }
- *         description: Nếu là "true" thì trả luôn cả bài nonverify (chỉ nên dùng cho staff/admin)
+ *         description: Page size
  *     responses:
  *       200:
- *         description: Danh sách bài đăng
+ *         description: List of posts
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/PostListResponse'
  *             examples:
  *               success:
- *                 summary: Ví dụ kết quả
+ *                 summary: Example result
  *                 value:
  *                   total: 2
  *                   page: 1
  *                   pageSize: 10
  *                   data:
  *                     - id: 12
- *                       title: "Bán iPhone 15 Pro Max"
- *                       content: "Fullbox, màu titan..."
+ *                       title: "Selling iPhone 15 Pro Max"
+ *                       content: "Fullbox, titanium color..."
  *                       image:
  *                         - "https://example.com/iphone1.jpg"
  *                         - "https://example.com/iphone2.jpg"
@@ -102,13 +98,13 @@ const router = Router();
  *                         username: "nhatn"
  *                         avatar: "https://example.com/ava.jpg"
  *       404:
- *         description: Không tìm thấy bài phù hợp hoặc chưa có dữ liệu
+ *         description: No matching posts found or no data available
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Message'
  *       500:
- *         description: Lỗi hệ thống
+ *         description: Server error
  *         content:
  *           application/json:
  *             schema:
@@ -124,7 +120,7 @@ const router = Router();
  *       properties:
  *         message:
  *           type: string
- *           example: "Không tìm thấy bài phù hợp"
+ *           example: "No matching posts found"
  *     UserPublic:
  *       type: object
  *       properties:
@@ -135,8 +131,8 @@ const router = Router();
  *       type: object
  *       properties:
  *         id: { type: integer, example: 12 }
- *         title: { type: string, example: "Bán iPhone 15 Pro Max" }
- *         content: { type: string, example: "Fullbox, màu titan..." }
+ *         title: { type: string, example: "Selling iPhone 15 Pro Max" }
+ *         content: { type: string, example: "Fullbox, titanium color..." }
  *         image:
  *           type: array
  *           items: { type: string, example: "https://example.com/iphone1.jpg" }
