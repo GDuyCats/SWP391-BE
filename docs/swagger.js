@@ -52,7 +52,8 @@ const options = {
       { name: "Auth", description: "Authorization and login" },
       { name: "Users", description: "API for users manage their profile" },
       { name: "Users ( Posts )", description: "API for user manage their posts" },
-      { name: "Plan & Checkout", description: "API for user payment"}
+      { name: "Plan & Checkout", description: "API for user payment"},
+      { name: "Admin manage Plan ", description : "API for admin manage the plan"}
     ],
   },
 
