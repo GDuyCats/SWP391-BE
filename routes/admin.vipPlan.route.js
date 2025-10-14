@@ -40,8 +40,8 @@ const router = Router();
  * @swagger
  * /admin/vip-plans:
  *   post:
- *     summary: Create a new VIP plan
  *     tags: [Admin manage Plan]
+ *     summary: Create a new VIP plan
  *     security:
  *       - bearerAuth: []
  *     description: Create a one-time or subscription VIP plan. Will create Stripe Product & Price and store references.

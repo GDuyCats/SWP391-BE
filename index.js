@@ -9,7 +9,7 @@ import { stripeWebhook } from "./controller/stripe.controller.js";
 import { connectDB } from "./postgres/postgres.js";
 
 import admin_routes from "./routes/admin.routes.js";
-import admin_vipplans from "./routes/admin.vipPlan.js";
+import admin_vipplans_routes from "./routes/admin.vipPlan.route.js";
 import auth_routes from "./routes/auth.routes.js";
 import mail_routes from "./routes/mail.routes.js";
 import user_routes from "./routes/user.routes.js";
@@ -80,7 +80,7 @@ app.options(/.*/, cors(corsOptions));
 
 // --- Routes ---
 app.use(admin_routes);
-app.use(admin_vipplans);
+app.use(admin_vipplans_routes);
 app.use(auth_routes);
 app.use(mail_routes);
 app.use(user_routes);
