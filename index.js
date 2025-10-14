@@ -5,24 +5,30 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./docs/swagger.js";
+import { stripeWebhook } from "../SWP_BE/controller/stripe.controller.js"
 // import Mail from "./utils/mailer.js";
 // ⛳ ĐÃ SỬA: import thêm sequelize để dùng ở /__dbcheck
 import { connectDB, sequelize } from "./postgres/postgres.js";
 
 import admin_routes from "./routes/admin.routes.js";
+import admin_vipplans from "./routes/admin.vipPlan.js"
 import auth_routes from "./routes/auth.routes.js";
 import mail_routes from "./routes/mail.routes.js";
 import user_routes from "./routes/user.routes.js";
 import user_post_routes from "./routes/user.post.routes.js"
 import post_public_router from "./routes/post.public.router.js"
 import post_verify_routes from "./routes/post.verify.routes.js"
+import payment_routes from "./routes/billing.route.js"
 dotenv.config();
 
 const app = express();
 
 // ⛳ ĐÃ SỬA: proxy awareness cho Railway/Heroku
 app.set("trust proxy", 1);
-
+app.post("/vip/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  stripeWebhook
+);
 // Body & cookies
 app.use(cookieParser());
 app.use(express.json());
@@ -50,12 +56,14 @@ app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions)); 
 // Routes
 app.use(admin_routes);
+app.use(admin_vipplans)
 app.use(auth_routes);
 app.use(mail_routes);
 app.use(user_routes);
 app.use(user_post_routes)
 app.use(post_public_router)
 app.use(post_verify_routes)
+app.use(payment_routes)
 // Health & DB check
 // app.get("/healthz", (req, res) => res.status(200).send("ok"));
 // app.get("/__mailcheck", async (req, res) => {

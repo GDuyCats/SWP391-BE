@@ -1,6 +1,7 @@
 import { Router } from "express";
 import authenticateToken from "../middleware/authenticateToken.js";
 import { createMyPost, updateMyPost, deleteMyPost, getMyPosts, getUserPosts } from "../controller/user.post.controller.js";
+import { enforcePostQuota } from "../middleware/enforcePostQuota.js";
 
 const router = Router();
 
@@ -9,7 +10,7 @@ const router = Router();
  * /create:
  *   post:
  *     summary: Create a new post by the authenticated user
- *     tags: [Posts (User)]
+ *     tags: [Users ( Posts )]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -42,14 +43,14 @@ const router = Router();
  *       500:
  *         description: Internal server error
  */
-router.post("/create", authenticateToken, createMyPost);
+router.post("/create", authenticateToken, enforcePostQuota, createMyPost);
 
 /**
  * @openapi
  * /post/{id}:
  *   patch:
  *     summary: Update a post by ID (authenticated user only)
- *     tags: [Posts (User)]
+ *     tags: [Users ( Posts )]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -89,7 +90,7 @@ router.patch("/post/:id", authenticateToken, updateMyPost);
  * /delete/{id}:
  *   delete:
  *     summary: Delete a post by ID (authenticated user only)
- *     tags: [Posts (User)]
+ *     tags: [Users ( Posts )]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -116,7 +117,7 @@ router.delete("/delete/:id", authenticateToken, deleteMyPost);
  * /me/post:
  *   get:
  *     summary: Get all posts created by the authenticated user
- *     tags: [Posts (User)]
+ *     tags: [Users ( Posts )]
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -134,7 +135,7 @@ router.get("/me/post", authenticateToken, getMyPosts);
  * /user/{userId}:
  *   get:
  *     summary: Get all posts created by a specific user (public access)
- *     tags: [Posts (User)]
+ *     tags: [Users ( Posts )]
  *     parameters:
  *       - in: path
  *         name: userId

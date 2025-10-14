@@ -9,7 +9,7 @@ const router = Router();
  * /profile:
  *   post:
  *     summary: Get the authenticated user's profile information
- *     tags: [User]
+ *     tags: [Users]
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -27,7 +27,7 @@ router.post("/profile", authenticateToken, profileController);
  * /profile/update:
  *   patch:
  *     summary: Update the authenticated user's profile
- *     tags: [User]
+ *     tags: [Users]
  *     security:
  *       - bearerAuth: []
  *     requestBody:

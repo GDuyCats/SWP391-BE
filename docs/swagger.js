@@ -47,10 +47,11 @@ const options = {
     security: [{ bearerAuth: [] }],
     tags: [
       { name: "Admin", description: "Admin manage everything" },
-      { name: "Posts (Public Search)", description: "Find all post which are verified " },
       { name: "Posts (Verify)", description: "Verify all post for staff" },
-      { name: "Users", description: "API for users" },
-      { name: "Auth", description: "Authorization and login " },
+      { name: "Posts (Public Search)", description: "Find all post which are verified" },
+      { name: "Auth", description: "Authorization and login" },
+      { name: "Users", description: "API for users manage their profile" },
+      { name: "Users ( Posts )", description: "API for user manage their posts" }
     ],
   },
 

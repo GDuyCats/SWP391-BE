@@ -2,7 +2,9 @@ import { Sequelize } from "sequelize";
 import dotenv from "dotenv";
 import dns from "node:dns";
 import { createUserModel } from "../model/userSchema.js";
-import { createPostModel } from "../model/listsSchema.js"; // 👈 import Post model
+import { createPostModel } from "../model/listsSchema.js";
+import { createVipPurchaseModel } from "../model/vipPurchase.js"; // [ADDED] 👈
+import { createVipPlanModel } from "../model/vipPlanSchema.js";
 
 dotenv.config();
 
@@ -30,11 +32,16 @@ export const sequelize = new Sequelize(DB_URL, {
 
 // ===== Models =====
 export const UserModel = createUserModel(sequelize);
-export const PostModel = createPostModel(sequelize); // 👈 khởi tạo Post
-
+export const PostModel = createPostModel(sequelize);
+export const VipPurchaseModel = createVipPurchaseModel(sequelize); // [ADDED] 👈
+export const VipPlanModel = createVipPlanModel(sequelize);
 // ===== Associations =====
 UserModel.hasMany(PostModel, { foreignKey: "userId", onDelete: "CASCADE" });
 PostModel.belongsTo(UserModel, { foreignKey: "userId" });
+
+// [ADDED] Quan hệ User ↔ VipPurchases
+UserModel.hasMany(VipPurchaseModel, { foreignKey: "userId", onDelete: "CASCADE" });
+VipPurchaseModel.belongsTo(UserModel, { foreignKey: "userId" });
 
 export const connectDB = async () => {
   await sequelize.authenticate();

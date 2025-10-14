@@ -50,6 +50,9 @@ export const createUserModel = (sequelize) => {
             defaultValue: false
         },
 
+        isVip: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+        vipExpiresAt: { type: DataTypes.DATE, allowNull: true },
+        
         refreshToken: {
             type: DataTypes.TEXT,
             allowNull: true
@@ -61,6 +64,10 @@ export const createUserModel = (sequelize) => {
             defaultValue: 0,
         }
     })
-
+    User.prototype.isVipActive = function () {
+        if (!this.isVip) return false;
+        if (!this.vipExpiresAt) return false;
+        return new Date(this.vipExpiresAt) > new Date();
+    };
     return User
 }
