@@ -9,7 +9,7 @@ const router = Router();
 
 /**
  * @swagger
- * /billing/plans:
+ * /plans:
  *   get:
  *     summary: Get all active VIP plans
  *     tags: [Plan & Checkout]
@@ -65,7 +65,7 @@ const router = Router();
 
 /**
  * @swagger
- * /billing/checkout-from-plan:
+ * /plans-checkout:
  *   post:
  *     summary: Create a Stripe checkout session for the selected VIP plan
  *     tags: [Plan & Checkout]
@@ -109,6 +109,6 @@ const router = Router();
  */
 
 router.get("/plans", listActivePlans);
-router.post("/checkout-from-plan", authenticateToken, checkoutFromPlan);
+router.post("/plans-checkout", authenticateToken, checkoutFromPlan);
 
 export default router;
