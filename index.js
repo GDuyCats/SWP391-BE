@@ -19,6 +19,7 @@ import user_post_routes from "./routes/user.post.routes.js"
 import post_public_router from "./routes/post.public.router.js"
 import post_verify_routes from "./routes/post.verify.routes.js"
 import payment_routes from "./routes/billing.route.js"
+import { stripeWebhook } from "../SWP_BE/controller/stripe.controller.js";
 dotenv.config();
 
 const app = express();
