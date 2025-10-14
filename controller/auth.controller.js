@@ -266,7 +266,9 @@ const loginController = async (req, res) => {
         role: user.role,
         avatar: user.avatar,
         accessToken,
-        isVerified: user.isVerified
+        isVerified: user.isVerified,
+        isVip: user.isVip,
+        vipExpiresAt: user.vipExpiresAt
       }
     });
 

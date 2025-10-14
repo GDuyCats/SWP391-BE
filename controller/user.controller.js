@@ -8,7 +8,7 @@ const profileController = async (req, res) => {
 
         const user = await UserModel.findByPk(userId, {
             // CHỈ chọn các trường public cần trả về
-            attributes: ["id", "username", "phone", "email", "avatar", "role", "isVerified", "createdAt", "updatedAt"],
+            attributes: ["id", "username", "phone", "email", "avatar", "role", "isVerified", "isVip", "vipExpiresAt", "createdAt", "updatedAt"],
         });
 
         if (!user) {
