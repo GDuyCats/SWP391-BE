@@ -34,7 +34,7 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // ⛳ ĐÃ SỬA: CORS với whitelist (nhiều origin, gồm local)
-const whitelist = (process.env.FRONTEND_URL || "http://localhost:5173")
+const whitelist = (process.env.FRONTEND_URL || "http://localhost:8081")
   .split(",")
   .map(s => s.trim())
   .filter(Boolean);
