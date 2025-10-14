@@ -51,7 +51,8 @@ const options = {
       { name: "Posts (Public Search)", description: "Find all post which are verified" },
       { name: "Auth", description: "Authorization and login" },
       { name: "Users", description: "API for users manage their profile" },
-      { name: "Users ( Posts )", description: "API for user manage their posts" }
+      { name: "Users ( Posts )", description: "API for user manage their posts" },
+      { name: "Plan & Checkout", description: "API for user payment"}
     ],
   },
 
