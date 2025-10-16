@@ -80,7 +80,7 @@ const router = Router();
  *       403: { description: Admin only }
  *       500: { description: Create plan failed }
  */
-router.post("/vip-plans", authenticateToken, isAdmin, createVipPlan);
+router.post("admin/vip-plans", authenticateToken, isAdmin, createVipPlan);
 
 /**
  * @swagger
@@ -112,7 +112,7 @@ router.post("/vip-plans", authenticateToken, isAdmin, createVipPlan);
  *       401: { description: Unauthorized }
  *       403: { description: Admin only }
  */
-router.get("/vip-plans", authenticateToken, isAdmin, getAllVipPlans);
+router.get("admin/vip-plans", authenticateToken, isAdmin, getAllVipPlans);
 
 /**
  * @swagger
@@ -158,7 +158,7 @@ router.get("/vip-plans", authenticateToken, isAdmin, getAllVipPlans);
  *       404: { description: Plan not found }
  *       500: { description: Update plan failed }
  */
-router.patch("/vip-plans/:id", authenticateToken, isAdmin, updateVipPlan);
+router.patch("admin/vip-plans/:id", authenticateToken, isAdmin, updateVipPlan);
 
 /**
  * @swagger
@@ -190,7 +190,7 @@ router.patch("/vip-plans/:id", authenticateToken, isAdmin, updateVipPlan);
  *       404: { description: Plan not found }
  *       500: { description: Delete plan failed }
  */
-router.delete("/vip-plans/:id", authenticateToken, isAdmin, deleteVipPlan);
+router.delete("admin/vip-plans/:id", authenticateToken, isAdmin, deleteVipPlan);
 
 /**
  * @swagger
@@ -229,6 +229,6 @@ router.delete("/vip-plans/:id", authenticateToken, isAdmin, deleteVipPlan);
  *       403: { description: Admin only }
  *       404: { description: Plan not found }
  */
-router.patch("/vip-plans/:id/toggle", authenticateToken, isAdmin, toggleVipPlan);
+router.patch("admin/vip-plans/:id/toggle", authenticateToken, isAdmin, toggleVipPlan);
 
 export default router;

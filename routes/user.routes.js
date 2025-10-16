@@ -1,11 +1,20 @@
+// routes/user.routes.js
 import { Router } from "express";
 import { profileController, updateMyProfile } from "../controller/user.controller.js";
+import { getMyPurchases } from "../controller/user.controller.js";
 import authenticateToken from "../middleware/authenticateToken.js";
 
 const router = Router();
 
 /**
- * @openapi
+ * @swagger
+ * tags:
+ *   name: Users
+ *   description: User profile & purchase management
+ */
+
+/**
+ * @swagger
  * /profile:
  *   post:
  *     summary: Get the authenticated user's profile information
@@ -23,7 +32,7 @@ const router = Router();
 router.post("/profile", authenticateToken, profileController);
 
 /**
- * @openapi
+ * @swagger
  * /profile/update:
  *   patch:
  *     summary: Update the authenticated user's profile
@@ -67,5 +76,62 @@ router.post("/profile", authenticateToken, profileController);
  *         description: Internal server error
  */
 router.patch("/profile/update", authenticateToken, updateMyProfile);
+
+/**
+ * @swagger
+ * /profile/purchases:
+ *   get:
+ *     summary: Get the authenticated user's purchase history
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Retrieve a paginated list of the user's VIP purchase transactions.
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, example: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, example: 10 }
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [PENDING, PAID, CANCELED, REFUNDED]
+ *       - in: query
+ *         name: provider
+ *         schema: { type: string, example: stripe }
+ *     responses:
+ *       200:
+ *         description: List of purchase transactions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                   example: true
+ *                 total:
+ *                   type: integer
+ *                   example: 3
+ *                 items:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: integer, example: 12 }
+ *                       orderCode: { type: string, example: VIP1712345678901 }
+ *                       amount: { type: integer, example: 99000 }
+ *                       status: { type: string, example: PAID }
+ *                       provider: { type: string, example: stripe }
+ *                       createdAt: { type: string, format: date-time }
+ *                       updatedAt: { type: string, format: date-time }
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/profile/purchases", authenticateToken, getMyPurchases);
 
 export default router;

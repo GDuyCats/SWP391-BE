@@ -1,28 +1,50 @@
-import { UserModel } from "../postgres/postgres.js"
+import { UserModel, VipPurchaseModel } from "../postgres/postgres.js";
+import { Op } from "sequelize";
+
+/**
+ * Get current user's profile
+ */
 const profileController = async (req, res) => {
-    try {
-        const userId = req.user?.id; // checkToken gắn vào
-        if (!userId) {
-            return res.status(401).json({ message: "Missing auth payload" });
-        }
-
-        const user = await UserModel.findByPk(userId, {
-            // CHỈ chọn các trường public cần trả về
-            attributes: ["id", "username", "phone", "email", "avatar", "role", "isVerified", "isVip", "vipExpiresAt", "createdAt", "updatedAt"],
-        });
-
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
-
-        // Không cache dữ liệu nhạy cảm
-        res.set("Cache-Control", "no-store");
-        return res.status(200).json({ user });
-    } catch (err) {
-        return res.status(500).json({ message: "Internal server error", detail: err.message });
+  try {
+    const userId = req.user?.id; // checkToken gắn vào
+    if (!userId) {
+      return res.status(401).json({ message: "Missing auth payload" });
     }
-}
 
+    const user = await UserModel.findByPk(userId, {
+      // CHỈ chọn các trường public cần trả về
+      attributes: [
+        "id",
+        "username",
+        "phone",
+        "email",
+        "avatar",
+        "role",
+        "isVerified",
+        "isVip",
+        "vipExpiresAt",
+        "createdAt",
+        "updatedAt",
+      ],
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Không cache dữ liệu nhạy cảm
+    res.set("Cache-Control", "no-store");
+    return res.status(200).json({ user });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ message: "Internal server error", detail: err.message });
+  }
+};
+
+/**
+ * Update current user's profile
+ */
 const updateMyProfile = async (req, res) => {
   try {
     const userId = req.user?.id; // đã có từ checkToken
@@ -41,7 +63,8 @@ const updateMyProfile = async (req, res) => {
     if (avatar === "") avatar = null;
 
     const patch = {};
-    if (typeof username === "string" && username.length > 0) patch.username = username;
+    if (typeof username === "string" && username.length > 0)
+      patch.username = username;
     if (phone === null || typeof phone === "string") patch.phone = phone; // null hoặc string hợp lệ
     if (avatar === null || typeof avatar === "string") patch.avatar = avatar;
 
@@ -70,17 +93,73 @@ const updateMyProfile = async (req, res) => {
     if (err.name === "SequelizeValidationError") {
       return res.status(400).json({
         message: "Validation error",
-        errors: err.errors.map(e => ({ field: e.path, message: e.message })),
+        errors: err.errors.map((e) => ({ field: e.path, message: e.message })),
       });
     }
     if (err.name === "SequelizeUniqueConstraintError") {
       return res.status(409).json({
         message: "Duplicate value",
-        errors: err.errors.map(e => ({ field: e.path, message: e.message })),
+        errors: err.errors.map((e) => ({ field: e.path, message: e.message })),
       });
     }
-    return res.status(500).json({ message: "Internal server error", detail: err.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error", detail: err.message });
   }
 };
 
-export { profileController, updateMyProfile } 
+/**
+ * Get user's VIP purchase history
+ */
+const getMyPurchases = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId)
+      return res.status(401).json({ ok: false, message: "Unauthorized" });
+
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
+    const offset = (page - 1) * limit;
+
+    const where = { userId };
+    if (req.query.status) where.status = req.query.status;
+    if (req.query.provider) where.provider = req.query.provider;
+    if (req.query.from || req.query.to) {
+      where.createdAt = {};
+      if (req.query.from) where.createdAt[Op.gte] = new Date(req.query.from);
+      if (req.query.to) where.createdAt[Op.lte] = new Date(req.query.to);
+    }
+
+    const { rows, count } = await VipPurchaseModel.findAndCountAll({
+      where,
+      order: [["createdAt", "DESC"]],
+      limit,
+      offset,
+      attributes: [
+        "id",
+        "orderCode",
+        "amount",
+        "status",
+        "provider",
+        "createdAt",
+        "updatedAt",
+      ],
+    });
+
+    res.set("Cache-Control", "no-store");
+    return res.status(200).json({
+      ok: true,
+      page,
+      limit,
+      total: count,
+      items: rows,
+    });
+  } catch (err) {
+    console.error("[getMyPurchases] error:", err);
+    return res
+      .status(500)
+      .json({ ok: false, message: "Failed to fetch purchases" });
+  }
+};
+
+export { profileController, updateMyProfile, getMyPurchases };
