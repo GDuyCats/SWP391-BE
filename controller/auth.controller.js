@@ -16,13 +16,14 @@ const __dirname = dirname(__filename);             // ĐÃ SỬA
 const MAIL_TPL_PATH = path.join(__dirname, "../mail.html");
 
 const MAIL_TPL = fs.readFileSync(MAIL_TPL_PATH, "utf-8");
+
 function renderVerifyEmailHTML({ verifyUrl, email }) {
   return MAIL_TPL
     .replaceAll("[VERIFY_URL]", verifyUrl)
     .replaceAll("[Email]", email ?? "");
 }
 dotenv.config()
-
+const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 const COOLDOWN_MS = 60_000;
 const resendTracker = new Map()
 function secondsLeft(email) {
@@ -54,6 +55,17 @@ const registerController = async (req, res) => {
       return res.status(400).json({ message: "Invalid email format" });
     }
 
+    // Helper nhỏ để build verifyUrl có redirect về FE login
+    const getApiBase = () =>
+      process.env.API_BASE_URL || `${req.protocol}://${req.get("host")}`;
+    const getDefaultRedirect = () =>
+      `${process.env.FRONTEND_URL || "http://localhost:3000"}/login?verified=1`;
+    const buildVerifyUrl = (token, redirectOverride) => {
+      const base = getApiBase();
+      const redirect = redirectOverride || getDefaultRedirect();
+      return `${base}/auth/verify-email?token=${encodeURIComponent(token)}&redirect=${encodeURIComponent(redirect)}`;
+    };
+
     // 1.5) Nếu email đã tồn tại
     const existing = await UserModel.findOne({ where: { email } });
     if (existing) {
@@ -62,8 +74,7 @@ const registerController = async (req, res) => {
       }
       try {
         const token = generateVerifyEmailToken(existing);
-        const base = process.env.API_BASE_URL || `${req.protocol}://${req.get("host")}`;
-        const verifyUrl = `${base}/auth/verify-email?token=${token}`;
+        const verifyUrl = buildVerifyUrl(token); // ⬅️ đã kèm redirect
 
         // dùng template
         const html = renderVerifyEmailHTML({ verifyUrl, email: existing.email });
@@ -85,6 +96,12 @@ const registerController = async (req, res) => {
         .json({ message: "Verification email resent. Please check your inbox." });
     }
 
+    // 1.6) Nếu username đã tồn tại ➜ trả message theo yêu cầu
+    const existingUsername = await UserModel.findOne({ where: { username } });
+    if (existingUsername) {
+      return res.status(409).json({ message: "username have been existed" });
+    }
+
     // 2) Hash password
     const hashedPass = await bcryptjs.hash(password, 10);
 
@@ -96,11 +113,10 @@ const registerController = async (req, res) => {
       isVerified: false,
     });
 
-    // 4) Gửi verify email — ⬇️ ĐÃ THAY ĐOẠN BẠN YÊU CẦU
+    // 4) Gửi verify email
     try {
       const token = generateVerifyEmailToken(user);
-      const base = process.env.API_BASE_URL || `${req.protocol}://${req.get("host")}`;
-      const verifyUrl = `${base}/auth/verify-email?token=${token}`;
+      const verifyUrl = buildVerifyUrl(token); // ⬅️ đã kèm redirect
 
       const html = renderVerifyEmailHTML({ verifyUrl, email: user.email });
 
@@ -122,14 +138,31 @@ const registerController = async (req, res) => {
     const expose = process.env.NODE_ENV !== "production" || process.env.EXPOSE_VERIFY_LINK === "true";
     return res.status(201).json({
       message: "Register success. Please verify your email.",
-      ...(expose ? { verifyUrl: `${process.env.API_BASE_URL || `${req.protocol}://${req.get("host")}`}/auth/verify-email?token=${generateVerifyEmailToken(user)}` } : {}),
+      ...(expose ? {
+        // ⬇️ Link debug cũng kèm redirect như trong email
+        verifyUrl: buildVerifyUrl(generateVerifyEmailToken(user))
+      } : {}),
       user: safeUser,
     });
   } catch (error) {
     console.error("Register error:", error);
+
+    // Phân biệt lỗi unique cho email/username ở DB
     if (error.name === "SequelizeUniqueConstraintError") {
-      return res.status(409).json({ message: "Email already exists" });
+      const firstErr = error?.errors?.[0];
+      const fieldFromErr = firstErr?.path;
+      const fieldFromMap = Object.keys(error?.fields || {})[0];
+      const field = fieldFromErr || fieldFromMap;
+
+      if (field === "username") {
+        return res.status(409).json({ message: "username have been existed" });
+      }
+      if (field === "email") {
+        return res.status(409).json({ message: "Email already exists" });
+      }
+      return res.status(409).json({ message: "Duplicate value" });
     }
+
     if (error.name === "SequelizeValidationError") {
       return res.status(400).json({ message: error.errors[0].message });
     }

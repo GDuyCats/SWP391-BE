@@ -352,10 +352,10 @@ export const sendContractOtp = async (req, res) => {
 
     const buyerMail = new Mail()
       .setTo(buyer.email)
-      .setSubject(`🔒 Mã OTP ký hợp đồng #${contract.id} (Buyer)`)
+      .setSubject(`Mã OTP ký hợp đồng #${contract.id} (Buyer)`)
       .setHTML(`
         <div style="font-family:Arial,sans-serif">
-          <h2>🔒 Mã OTP ký hợp đồng</h2>
+          <h2>Mã OTP ký hợp đồng</h2>
           <p>Xin chào <b>${buyer.username}</b>,</p>
           <p>Mã OTP để xác nhận ký hợp đồng #${contract.id} là:</p>
           <div style="font-size:28px;letter-spacing:4px;font-weight:700">${buyerOtp}</div>
