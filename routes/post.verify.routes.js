@@ -11,7 +11,7 @@ const router = Router();
  * @openapi
  * /{id}/verify:
  *   patch:
- *     summary: Staff or Admin verify a post
+ *     summary: Staff verify a post
  *     tags: [Posts (Verify)]
  *     security:
  *       - bearerAuth: []

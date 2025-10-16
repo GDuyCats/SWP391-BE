@@ -15,7 +15,7 @@ const router = Router();
 
 /**
  * @swagger
- * /profile:
+ * /profile/me:
  *   post:
  *     summary: Get the authenticated user's profile information
  *     tags: [Users]
@@ -29,7 +29,7 @@ const router = Router();
  *       500:
  *         description: Internal server error
  */
-router.post("/profile", authenticateToken, profileController);
+router.post("/me", authenticateToken, profileController);
 
 /**
  * @swagger
@@ -75,7 +75,7 @@ router.post("/profile", authenticateToken, profileController);
  *       500:
  *         description: Internal server error
  */
-router.patch("/profile/update", authenticateToken, updateMyProfile);
+router.patch("/update", authenticateToken, updateMyProfile);
 
 /**
  * @swagger
@@ -132,6 +132,6 @@ router.patch("/profile/update", authenticateToken, updateMyProfile);
  *       500:
  *         description: Internal server error
  */
-router.get("/profile/purchases", authenticateToken, getMyPurchases);
+router.get("/purchases", authenticateToken, getMyPurchases);
 
 export default router;

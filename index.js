@@ -16,8 +16,12 @@ import user_routes from "./routes/user.routes.js";
 import user_post_routes from "./routes/user.post.routes.js";
 import post_public_router from "./routes/post.public.router.js";
 import post_verify_routes from "./routes/post.verify.routes.js";
-import payment_routes from "./routes/billing.route.js";
-
+import billing_routes from "./routes/billing.route.js";
+import contract_routes from "./routes/contract.routes.js";
+import contract_admin_routes from "./routes/contract.admin.routes.js";
+import contract_staff_routes from "./routes/contract.staff.routes.js";
+import contract_viewer_routes from "./routes/contract.viewer.routes.js"
+import contract_otp_routes from "./routes/contract.otp.routes.js";
 dotenv.config();
 
 const app = express();
@@ -79,16 +83,20 @@ app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
 // --- Routes ---
-app.use(admin_routes);
-app.use(admin_vipplans_routes);
+app.use("/admin", admin_routes);
+app.use("/admin", admin_vipplans_routes);
 app.use(auth_routes);
 app.use(mail_routes);
-app.use(user_routes);
+app.use("/profile", user_routes);
 app.use(user_post_routes);
 app.use(post_public_router);
 app.use(post_verify_routes);
-app.use(payment_routes);
-
+app.use("/plans",billing_routes);
+app.use("/contracts", contract_routes)
+app.use("/admin/contracts", contract_admin_routes);
+app.use("/staff/contracts", contract_staff_routes);
+app.use("/me", contract_viewer_routes)
+app.use("/", contract_otp_routes);
 // --- Swagger ---
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 

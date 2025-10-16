@@ -80,9 +80,9 @@ import authenticateToken from "../middleware/authenticateToken.js";
 import isAdmin from "../middleware/isAdmin.js";
 const router = express.Router();
 
-router.get('/admin/user',authenticateToken, isAdmin, getUsers)
-router.post('/admin/create_user', createUsers)
-router.put('/admin/user/:id', authenticateToken, isAdmin, updateUsers)
-router.delete('/admin/user/:id', authenticateToken, isAdmin, deleteUsers)
+router.get('/user',authenticateToken, isAdmin, getUsers)
+router.post('/create_user', createUsers)
+router.put('/user/:id', authenticateToken, isAdmin, updateUsers)
+router.delete('/user/:id', authenticateToken, isAdmin, deleteUsers)
 // router.get("/admin/dashboard", authenticateToken, isAdmin, getAdminDashboard);
 export default router
