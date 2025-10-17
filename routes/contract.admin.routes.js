@@ -6,7 +6,7 @@ import { assignStaffToContract } from "../controller/contract.controller.js";
 const router = Router();
 /**
  * @swagger
- * /contracts/assign-staff:
+ * /admin/contracts/assign-staff:
  *   post:
  *     summary: Admin gán nhân viên (staff) phụ trách hợp đồng
  *     description: >
