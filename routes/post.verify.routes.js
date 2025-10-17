@@ -9,9 +9,10 @@ const router = Router();
 
 /**
  * @openapi
- * /{id}/verify:
+ * /posts/{id}/verify:
  *   patch:
- *     summary: Staff verify a post
+ *     summary: Staff verify or unverify a post
+ *     description: Chỉ admin hoặc staff mới có thể cập nhật trạng thái duyệt bài. Field `verifyStatus` chỉ chấp nhận `"verify"` hoặc `"nonverify"`.
  *     tags: [Posts (Verify)]
  *     security:
  *       - bearerAuth: []
@@ -21,16 +22,33 @@ const router = Router();
  *         required: true
  *         schema:
  *           type: integer
- *         description: ID of the post to verify
+ *         description: ID của bài đăng cần duyệt
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - verifyStatus
+ *             properties:
+ *               verifyStatus:
+ *                 type: string
+ *                 enum: [verify, nonverify]
+ *                 description: Trạng thái duyệt bài ("verify" hoặc "nonverify")
+ *           example:
+ *             verifyStatus: verify
  *     responses:
  *       200:
- *         description: Post verified successfully
+ *         description: Cập nhật trạng thái duyệt bài thành công
+ *       400:
+ *         description: verifyStatus không hợp lệ
  *       403:
- *         description: Forbidden - user is not authorized
+ *         description: Người dùng không có quyền duyệt bài
  *       404:
- *         description: Post not found
+ *         description: Không tìm thấy bài đăng
  *       500:
- *         description: Internal server error
+ *         description: Lỗi server nội bộ
  */
 router.patch("/:id/verify", authenticateToken, isStaff, verifyPost);
 
