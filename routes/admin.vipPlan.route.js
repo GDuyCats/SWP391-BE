@@ -23,8 +23,9 @@ const router = Router();
  *         name: { type: string, example: "VIP 30 ngày" }
  *         slug:
  *           type: string
- *           description: Định danh duy nhất cho gói
- *           example: "silver"
+ *           description: Mã gói dùng để map sang vipTier của Post. Chỉ nhận: diamond, gold, silver.
+ *           enum: [diamond, gold, silver]
+ *           example: diamond
  *         description: { type: string, example: "Hiển thị ưu tiên trong 30 ngày" }
  *         type:
  *           type: string
@@ -32,11 +33,11 @@ const router = Router();
  *           example: one_time
  *         amount:
  *           type: integer
- *           description: Giá gói (VND). Đơn vị nhỏ nhất, là số nguyên.
+ *           description: Giá gói (đơn vị nhỏ nhất), ví dụ VND.
  *           example: 99000
  *         currency:
  *           type: string
- *           description: Mã tiền tệ ISO-4217. Hệ thống mặc định "vnd".
+ *           description: Mã tiền tệ ISO-4217. Mặc định "vnd".
  *           example: "vnd"
  *         durationDays:
  *           type: integer
@@ -69,8 +70,10 @@ const router = Router();
  *           description: Bật/tắt gói
  *         priority:
  *           type: integer
+ *           description: Mức ưu tiên hiển thị (1–9; số càng lớn càng ưu tiên).
+ *           minimum: 1
+ *           maximum: 9
  *           example: 3
- *           description: Mức ưu tiên hiển thị (cao hơn sẽ được ưu tiên)
  *         createdAt: { type: string, format: date-time }
  *         updatedAt: { type: string, format: date-time }
  *
@@ -78,13 +81,14 @@ const router = Router();
  *       oneOf:
  *         - title: One-time plan
  *           type: object
- *           required: [name, slug, type, amount, durationDays]
+ *           required: [name, slug, type, amount, durationDays, priority]
  *           properties:
  *             name: { type: string, example: "VIP 60 ngày" }
  *             slug:
  *               type: string
- *               example: "gold"
- *               description: Phải duy nhất (unique)
+ *               enum: [diamond, gold, silver]
+ *               example: gold
+ *               description: Phải là một trong: diamond, gold, silver
  *             description: { type: string, example: "Premium 60 ngày" }
  *             type:
  *               type: string
@@ -93,18 +97,25 @@ const router = Router();
  *             currency: { type: string, example: "vnd" }
  *             durationDays:
  *               type: integer
+ *               minimum: 1
  *               example: 60
- *             priority: { type: integer, example: 2 }
+ *             priority:
+ *               type: integer
+ *               description: Giá trị 1–9
+ *               minimum: 1
+ *               maximum: 9
+ *               example: 2
  *             active: { type: boolean, example: true }
  *         - title: Subscription plan
  *           type: object
- *           required: [name, slug, type, amount, interval, intervalCount]
+ *           required: [name, slug, type, amount, interval, intervalCount, priority]
  *           properties:
  *             name: { type: string, example: "VIP Monthly" }
  *             slug:
  *               type: string
- *               example: "vip-monthly"
- *               description: Phải duy nhất (unique)
+ *               enum: [diamond, gold, silver]
+ *               example: diamond
+ *               description: Phải là một trong: diamond, gold, silver
  *             description: { type: string, example: "Gia hạn theo tháng" }
  *             type:
  *               type: string
@@ -119,7 +130,12 @@ const router = Router();
  *               type: integer
  *               minimum: 1
  *               example: 1
- *             priority: { type: integer, example: 1 }
+ *             priority:
+ *               type: integer
+ *               description: Giá trị 1–9
+ *               minimum: 1
+ *               maximum: 9
+ *               example: 3
  *             active: { type: boolean, example: true }
  */
 
@@ -191,7 +207,7 @@ router.get("/vip-plans", authenticateToken, isAdmin, getAllVipPlans);
  * /admin/vip-plans/{id}:
  *   patch:
  *     tags: [Admin manage Plan]
- *     summary: Update a VIP plan
+ *    summary: Update a VIP plan
  *     security:
  *       - bearerAuth: []
  *     description: Cập nhật các trường của plan. Nếu thay đổi amount/currency/interval/intervalCount, hệ thống có thể tạo Stripe Price mới và liên kết.
@@ -210,8 +226,15 @@ router.get("/vip-plans", authenticateToken, isAdmin, getAllVipPlans);
  *               name: { type: string, example: "VIP 45 ngày" }
  *               description: { type: string, example: "Gói 45 ngày ưu tiên" }
  *               active: { type: boolean, example: true }
- *               priority: { type: integer, example: 2 }
- *               slug: { type: string, example: "vip-45-days" }
+ *               priority:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 9
+ *                 example: 2
+ *               slug:
+ *                 type: string
+ *                 enum: [diamond, gold, silver]
+ *                 example: silver
  *               amount: { type: integer, example: 129000 }
  *               currency: { type: string, example: "vnd" }
  *               durationDays: { type: integer, example: 45 }

@@ -66,7 +66,7 @@ export const createPostModel = (sequelize) => {
       vipPriority: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        defaultValue: 0, // 3 > 2 > 1 > 0
+        defaultValue: 0,
       },
 
       // 👉 NEW: tham chiếu gói đã chọn khi đăng (VipPlans)
@@ -83,7 +83,6 @@ export const createPostModel = (sequelize) => {
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: true,
-        comment: "false => ẩn khỏi public (hết hạn VIP / bị gỡ)",
       },
 
       verifyStatus: {
@@ -91,14 +90,14 @@ export const createPostModel = (sequelize) => {
         allowNull: false,
         defaultValue: "nonverify",
       },
+
       category: {
         type: DataTypes.ENUM("battery", "vehicle"),
         allowNull: false,
-        defaultValue: "vehicle", // mặc định là vehicle
+        defaultValue: "vehicle",
       },
     },
     {
-      // 👉 NEW: index để tối ưu filter/sort theo luồng mới
       indexes: [
         { fields: ["isActive"] },
         { fields: ["verifyStatus"] },
