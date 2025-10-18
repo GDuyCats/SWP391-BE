@@ -65,7 +65,7 @@ const router = Router();
 
 /**
  * @swagger
- * /plans-checkout:
+ * plans/checkout:
  *   post:
  *     summary: Create a Stripe checkout session for the selected VIP plan
  *     tags: [Plan & Checkout]
