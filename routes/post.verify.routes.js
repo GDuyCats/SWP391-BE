@@ -9,7 +9,7 @@ const router = Router();
 
 /**
  * @openapi
- * /posts/{id}/verify:
+ * /{id}/verify:
  *   patch:
  *     summary: Staff verify or unverify a post
  *     description: Chỉ admin hoặc staff mới có thể cập nhật trạng thái duyệt bài. Field `verifyStatus` chỉ chấp nhận `"verify"` hoặc `"nonverify"`.
