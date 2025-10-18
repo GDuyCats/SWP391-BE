@@ -21,19 +21,86 @@ const router = Router();
  *       properties:
  *         id: { type: integer, example: 1 }
  *         name: { type: string, example: "VIP 30 days" }
- *         description: { type: string, example: "Unlock premium features for 30 days." }
+ *         slug: { type: string, example: "vip-30-days" }
+ *         description: { type: string, example: "Unlock premium features." }
  *         type:
  *           type: string
  *           enum: [one_time, subscription]
  *           example: one_time
  *         amount: { type: integer, example: 99000 }
- *         currency: { type: string, example: "vnd" }
- *         durationDays: { type: integer, nullable: true, example: 30 }
- *         interval: { type: string, nullable: true, example: "month" }
- *         intervalCount: { type: integer, nullable: true, example: 1 }
+ *         currency:
+ *           type: string
+ *           description: ISO currency (khuyến nghị UPPERCASE)
+ *           example: "VND"
+ *         durationDays:
+ *           type: integer
+ *           nullable: true
+ *           example: 30
+ *           description: Chỉ dùng khi type = one_time
+ *         interval:
+ *           type: string
+ *           nullable: true
+ *           enum: [day, week, month, year]
+ *           example: "month"
+ *           description: Chỉ dùng khi type = subscription
+ *         intervalCount:
+ *           type: integer
+ *           nullable: true
+ *           minimum: 1
+ *           example: 1
+ *           description: Chỉ dùng khi type = subscription
  *         stripeProductId: { type: string, example: "prod_123" }
  *         stripePriceId: { type: string, example: "price_123" }
  *         active: { type: boolean, example: true }
+ *         priority: { type: integer, example: 10 }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *
+ *     CreateVipPlanRequest:
+ *       oneOf:
+ *         - title: One-time plan
+ *           type: object
+ *           required: [name, type, amount]
+ *           properties:
+ *             name: { type: string, example: "VIP 60 days" }
+ *             description: { type: string, example: "Premium 60 ngày" }
+ *             type:
+ *               type: string
+ *               enum: [one_time]
+ *             amount: { type: integer, example: 199000 }
+ *             currency: { type: string, example: "VND" }
+ *             durationDays:
+ *               type: integer
+ *               example: 60
+ *             priority: { type: integer, example: 20 }
+ *             active: { type: boolean, example: true }
+ *             slug:
+ *               type: string
+ *               example: "vip-60-days"
+ *         - title: Subscription plan
+ *           type: object
+ *           required: [name, type, amount, interval, intervalCount]
+ *           properties:
+ *             name: { type: string, example: "VIP Monthly" }
+ *             description: { type: string, example: "Gia hạn theo tháng" }
+ *             type:
+ *               type: string
+ *               enum: [subscription]
+ *             amount: { type: integer, example: 99000 }
+ *             currency: { type: string, example: "VND" }
+ *             interval:
+ *               type: string
+ *               enum: [day, week, month, year]
+ *               example: "month"
+ *             intervalCount:
+ *               type: integer
+ *               minimum: 1
+ *               example: 1
+ *             priority: { type: integer, example: 10 }
+ *             active: { type: boolean, example: true }
+ *             slug:
+ *               type: string
+ *               example: "vip-monthly"
  */
 
 /**
@@ -44,30 +111,15 @@ const router = Router();
  *     summary: Create a new VIP plan
  *     security:
  *       - bearerAuth: []
- *     description: Create a one-time or subscription VIP plan. Will create Stripe Product & Price and store references.
+ *     description: Tạo gói one-time hoặc subscription. Hệ thống sẽ tạo Stripe Product & Price và lưu lại khóa tham chiếu.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required: [name, type, amount]
- *             properties:
- *               name: { type: string, example: "VIP 30 days" }
- *               description: { type: string, example: "Premium posting limit for 30 days." }
- *               type:
- *                 type: string
- *                 enum: [one_time, subscription]
- *                 example: one_time
- *               amount: { type: integer, example: 99000 }
- *               currency: { type: string, example: "vnd" }
- *               # one-time only
- *               durationDays: { type: integer, example: 30 }
- *               # subscription only
- *               interval: { type: string, example: "month" }
- *               intervalCount: { type: integer, example: 1 }
+ *             $ref: '#/components/schemas/CreateVipPlanRequest'
  *     responses:
- *       200:
+ *       201:
  *         description: Plan created
  *         content:
  *           application/json:
@@ -76,6 +128,7 @@ const router = Router();
  *               properties:
  *                 ok: { type: boolean, example: true }
  *                 plan: { $ref: '#/components/schemas/VipPlan' }
+ *       400: { description: Bad request (validation)" }
  *       401: { description: Unauthorized }
  *       403: { description: Admin only }
  *       500: { description: Create plan failed }
@@ -90,13 +143,12 @@ router.post("/vip-plans", authenticateToken, isAdmin, createVipPlan);
  *     tags: [Admin manage Plan]
  *     security:
  *       - bearerAuth: []
- *     description: Returns every plan. Optionally filter by query `?active=true|false`.
  *     parameters:
  *       - in: query
  *         name: active
  *         schema: { type: string, enum: [true, false] }
  *         required: false
- *         description: Filter by active status.
+ *         description: Lọc theo trạng thái active.
  *     responses:
  *       200:
  *         description: Plans fetched
@@ -122,7 +174,7 @@ router.get("/vip-plans", authenticateToken, isAdmin, getAllVipPlans);
  *     tags: [Admin manage Plan]
  *     security:
  *       - bearerAuth: []
- *     description: Updates plan fields. If amount/currency/interval changes, a new Stripe Price will be created and linked.
+ *     description: Cập nhật trường của plan. Nếu thay đổi amount/currency/interval/intervalCount, hệ thống có thể tạo Stripe Price mới và liên kết.
  *     parameters:
  *       - in: path
  *         name: id
@@ -137,12 +189,14 @@ router.get("/vip-plans", authenticateToken, isAdmin, getAllVipPlans);
  *             properties:
  *               name: { type: string, example: "VIP 45 days" }
  *               description: { type: string }
- *               active: { type: boolean }
+ *               active: { type: boolean, example: true }
+ *               priority: { type: integer, example: 15 }
  *               amount: { type: integer, example: 129000 }
- *               currency: { type: string, example: "vnd" }
+ *               currency: { type: string, example: "VND" }
  *               durationDays: { type: integer, example: 45 }
- *               interval: { type: string, example: "month" }
- *               intervalCount: { type: integer, example: 1 }
+ *               interval: { type: string, enum: [day, week, month, year], example: "month" }
+ *               intervalCount: { type: integer, minimum: 1, example: 1 }
+ *               slug: { type: string, example: "vip-45-days" }
  *     responses:
  *       200:
  *         description: Plan updated
@@ -168,7 +222,7 @@ router.patch("/vip-plans/:id", authenticateToken, isAdmin, updateVipPlan);
  *     tags: [Admin manage Plan]
  *     security:
  *       - bearerAuth: []
- *     description: Sets `active=false` and attempts to deactivate the Stripe Price (when supported). Keeps historical data.
+ *     description: Đặt `active=false` (giữ lịch sử). Có thể cố gắng deactivate Stripe Price tương ứng.
  *     parameters:
  *       - in: path
  *         name: id
@@ -200,12 +254,6 @@ router.delete("/vip-plans/:id", authenticateToken, isAdmin, deleteVipPlan);
  *     tags: [Admin manage Plan]
  *     security:
  *       - bearerAuth: []
- *     description: Quickly enable/disable a plan by toggling its `active` flag.
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: integer }
  *     requestBody:
  *       required: true
  *       content:
@@ -215,6 +263,11 @@ router.delete("/vip-plans/:id", authenticateToken, isAdmin, deleteVipPlan);
  *             required: [active]
  *             properties:
  *               active: { type: boolean, example: false }
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
  *     responses:
  *       200:
  *         description: Plan toggled
