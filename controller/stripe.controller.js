@@ -207,7 +207,7 @@ export const stripeWebhook = async (req, res) => {
       await post.update({
         isVip: true,
         isActive: true,
-        verifyStatus: "verify", // nếu bạn vẫn muốn duyệt tay, hãy đổi thành "nonverify" và để staff bật isActive sau
+        verifyStatus: "nonverify", // nếu bạn vẫn muốn duyệt tay, hãy đổi thành "nonverify" và để staff bật isActive sau
         vipPlanId: plan ? plan.id : null,
         vipTier,
         vipPriority,
