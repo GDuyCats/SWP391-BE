@@ -92,7 +92,7 @@ export const createVipCheckout = async (req, res) => {
         type: plan.type,
         durationDays: String(plan.durationDays ?? ""),
       },
-      success_url: `${process.env.CLIENT_URL}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${process.env.CLIENT_URL}`,
       cancel_url: `${process.env.CLIENT_URL}/billing/cancel`,
     };
 
