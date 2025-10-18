@@ -26,41 +26,52 @@ const withParam = (url, key, value) => {
 };
 
 const verifyMailController = async (req, res) => {
-  const { token, redirect } = req.query;
+  // ✅ nhận thêm debug param
+  const { token, redirect, debug } = req.query;
   if (!token) return res.status(400).send("Missing token");
 
-  // Base dest
   const baseDest = isSafeRedirect(redirect) ? redirect : getDefaultLoginUrl();
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET_VERIFYEMAIL);
+    // ✅ fallback secret (VERIFYEMAIL hoặc JWT_SECRET)
+    const payload = jwt.verify(
+      token,
+      process.env.JWT_SECRET_VERIFYEMAIL || process.env.JWT_SECRET
+    );
+
     const userId = payload?.id ?? payload?.userId;
     if (!userId) {
       const dest = withParam(baseDest, "verified", "0");
+      if (debug === "1")
+        return res.json({ ok: false, reason: "invalid_payload" });
       return res.redirect(303, withParam(dest, "reason", "invalid_payload"));
     }
 
     const user = await UserModel.findOne({ where: { id: userId } });
     if (!user) {
       const dest = withParam(baseDest, "verified", "0");
+      if (debug === "1") return res.json({ ok: false, reason: "not_found" });
       return res.redirect(303, withParam(dest, "reason", "not_found"));
     }
 
     if (user.isVerified) {
-      // đã verify từ trước
       const dest = withParam(baseDest, "verified", "1");
+      if (debug === "1")
+        return res.json({ ok: true, reason: "already_verified" });
       return res.redirect(303, withParam(dest, "reason", "already_verified"));
     }
 
     await user.update({ isVerified: true, verifiedAt: new Date() });
-    // verify thành công lần đầu
     const dest = withParam(baseDest, "verified", "1");
+    if (debug === "1") return res.json({ ok: true, reason: "just_verified" });
     return res.redirect(303, withParam(dest, "reason", "just_verified"));
   } catch (err) {
-    // Token lỗi/hết hạn
     const dest = withParam(baseDest, "verified", "0");
     const reason =
       err?.name === "TokenExpiredError" ? "expired" : "invalid_token";
+    // ✅ debug hiển thị lý do lỗi
+    if (debug === "1")
+      return res.json({ ok: false, reason, error: err.message });
     return res.redirect(303, withParam(dest, "reason", reason));
   }
 };

@@ -3,119 +3,88 @@ import Stripe from "stripe";
 import { addDays } from "date-fns";
 import {
   VipPurchaseModel,
+  VipPlanModel,
+  PostModel,
   UserModel,
-  VipPlanModel,            // 👈 cần export từ postgres
 } from "../postgres/postgres.js";
 
-// Stripe SDK
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
 
-// Fallback nếu không truyền planId
 const DEFAULT_PRICE_VND = 99000;
 const DEFAULT_DURATION_DAYS = 30;
 
 const genCode = () => "VIP" + Date.now() + Math.floor(Math.random() * 1000);
 
 /**
- * Tạo Checkout Session từ 1 gói (plan). FE có thể truyền:
- * { planId?: number }
- * - Nếu có planId: dùng price Stripe của plan đó
- * - Nếu không: dùng inline price 99k / 30 ngày (one-time)
+ * [POST] /api/stripe/checkout
+ * FE gửi: { planId, postId }
+ * - planId: id gói VIP (bắt buộc)
+ * - postId: id bài đăng đang chờ thanh toán (bắt buộc)
  */
 export const createVipCheckout = async (req, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
+    const { planId, postId } = req.body || {};
+    if (!planId || !postId)
+      return res.status(400).json({ message: "Thiếu planId hoặc postId" });
+
     const user = await UserModel.findByPk(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const { planId } = req.body || {};
-    let plan = null;
+    const plan = await VipPlanModel.findByPk(planId);
+    if (!plan || !plan.active)
+      return res.status(404).json({ message: "Plan not found or inactive" });
 
-    if (planId) {
-      plan = await VipPlanModel.findByPk(planId);
-      if (!plan || !plan.active) {
-        return res.status(404).json({ message: "Plan not found or inactive" });
-      }
-    }
+    const post = await PostModel.findByPk(postId);
+    if (!post || post.userId !== userId)
+      return res.status(404).json({ message: "Không tìm thấy bài đăng hoặc không thuộc sở hữu của bạn" });
 
     const orderCode = genCode();
 
-    // Ghi log giao dịch PENDING trước
+    // Ghi log giao dịch trước
     await VipPurchaseModel.create({
       userId,
+      postId,
       orderCode,
-      amount: plan ? plan.amount : DEFAULT_PRICE_VND,
+      amount: plan.amount,
       status: "PENDING",
       provider: "stripe",
-      rawPayload: plan ? { planId: plan.id } : { fallback: true },
+      rawPayload: { planId: plan.id },
     });
 
-    let session;
+    // Tạo Stripe checkout session
+    const session = await stripe.checkout.sessions.create({
+      mode: plan.type === "subscription" ? "subscription" : "payment",
+      line_items: [{ price: plan.stripePriceId, quantity: 1 }],
+      metadata: {
+        orderCode,
+        userId: String(userId),
+        planId: String(plan.id),
+        postId: String(postId),
+        type: plan.type,
+        durationDays: String(plan.durationDays),
+      },
+      success_url: `${process.env.CLIENT_URL}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.CLIENT_URL}/billing/cancel`,
+    });
 
-    if (plan) {
-      // Có plan → dùng price Stripe đã tạo sẵn
-      const mode = plan.type === "subscription" ? "subscription" : "payment";
-
-      session = await stripe.checkout.sessions.create({
-        mode,
-        line_items: [{ price: plan.stripePriceId, quantity: 1 }],
-        metadata: {
-          orderCode,
-          userId: String(userId),
-          planId: String(plan.id),
-          type: plan.type, // 'one_time' | 'subscription'
-          durationDays: plan.durationDays ?? "",
-        },
-        success_url: `${process.env.CLIENT_URL}`,
-        // /billing/success?session_id={CHECKOUT_SESSION_ID}
-        cancel_url: `${process.env.CLIENT_URL}/billing/cancel`,
-      });
-    } else {
-      // Không có plan → inline one-time 99k / 30 ngày
-      session = await stripe.checkout.sessions.create({
-        mode: "payment",
-        line_items: [
-          {
-            price_data: {
-              currency: "vnd",
-              product_data: { name: `VIP ${DEFAULT_DURATION_DAYS} ngày` },
-              unit_amount: DEFAULT_PRICE_VND,
-            },
-            quantity: 1,
-          },
-        ],
-        metadata: {
-          orderCode,
-          userId: String(userId),
-          type: "one_time",
-          durationDays: String(DEFAULT_DURATION_DAYS),
-        },
-        success_url: `${process.env.CLIENT_URL}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${process.env.CLIENT_URL}/billing/cancel`,
-      });
-    }
-
-    if (!session?.url) {
-      return res.status(500).json({ ok: false, message: "Stripe session has no URL" });
-    }
+    if (!session?.url)
+      return res.status(500).json({ message: "Stripe session has no URL" });
 
     return res.json({ ok: true, url: session.url, orderCode });
   } catch (err) {
     console.error("[createVipCheckout] error:", err);
-    return res.status(400).json({
-      ok: false,
-      message: err?.message || "Create checkout failed",
-    });
+    return res.status(500).json({ ok: false, message: err.message || "Create checkout failed" });
   }
 };
 
 /**
- * Webhook Stripe: xác nhận thanh toán
- * - one_time: cộng durationDays
- * - subscription: dùng current_period_end của subscription
- * LƯU Ý: route phải nhận raw body (express.raw) ở app chính!
+ * [POST] /api/stripe/webhook
+ * - Stripe webhook xác nhận thanh toán thành công
+ * - Cập nhật VipPurchaseModel và PostModel
+ * - Route này phải nhận raw body!
  */
 export const stripeWebhook = async (req, res) => {
   const sig = req.headers["stripe-signature"];
@@ -135,69 +104,61 @@ export const stripeWebhook = async (req, res) => {
   try {
     if (event.type === "checkout.session.completed") {
       const s = event.data.object;
-
       const orderCode = s?.metadata?.orderCode;
       const userId = Number(s?.metadata?.userId);
-      const planId = s?.metadata?.planId ? Number(s.metadata.planId) : null;
+      const planId = Number(s?.metadata?.planId);
+      const postId = Number(s?.metadata?.postId);
       const type = s?.metadata?.type || "one_time";
-      const metaDuration = s?.metadata?.durationDays
-        ? Number(s.metadata.durationDays)
-        : null;
+      const metaDuration = s?.metadata?.durationDays ? Number(s.metadata.durationDays) : null;
 
-      if (!orderCode || !userId) {
-        console.warn("[stripeWebhook] missing metadata");
+      if (!orderCode || !userId || !postId) {
+        console.warn("[stripeWebhook] missing metadata:", s?.metadata);
         return res.json({ received: true });
       }
 
       const tx = await VipPurchaseModel.findOne({ where: { orderCode } });
       if (!tx) {
-        console.warn("[stripeWebhook] tx not found for", orderCode);
+        console.warn("[stripeWebhook] VipPurchase not found:", orderCode);
         return res.json({ received: true });
       }
 
       if (tx.status === "PAID") {
-        // idempotent
+        // Idempotent retry
         return res.json({ received: true });
       }
 
-      // Tìm user & plan (nếu có)
-      const user = await UserModel.findByPk(userId);
+      const post = await PostModel.findByPk(postId);
       const plan = planId ? await VipPlanModel.findByPk(planId) : null;
+
+      if (!post) {
+        console.warn("[stripeWebhook] post not found:", postId);
+        return res.json({ received: true });
+      }
 
       // Cập nhật giao dịch
       await tx.update({ status: "PAID", rawPayload: s });
 
-      if (!user) {
-        console.warn("[stripeWebhook] user not found:", userId);
-        return res.json({ received: true });
-      }
+      // Tính hạn VIP cho bài
+      const days = (plan && plan.durationDays) || metaDuration || DEFAULT_DURATION_DAYS;
+      const vipExpiresAt = addDays(new Date(), days);
 
-      const now = new Date();
-      const stillActive = user.isVip && user.vipExpiresAt && new Date(user.vipExpiresAt) > now;
-      const start = stillActive ? new Date(user.vipExpiresAt) : now;
+      await post.update({
+        isVip: true,
+        isActive: true,
+        verifyStatus: "nonverify",
+        vipPlanId: plan ? plan.id : null,
+        vipTier: plan ? plan.slug : "custom",
+        vipPriority: plan ? plan.priority : 0,
+        vipExpiresAt,
+      });
 
-      if (type === "subscription" && s.mode === "subscription" && s.subscription) {
-        // Lấy kỳ hạn thực từ Stripe subscription
-        const sub = await stripe.subscriptions.retrieve(s.subscription);
-        const currentEnd = new Date(sub.current_period_end * 1000);
-        await user.update({ isVip: true, vipExpiresAt: currentEnd });
-      } else {
-        // one-time: cộng ngày dựa trên plan.durationDays (nếu có) hoặc metadata / default
-        const days =
-          (plan && plan.durationDays) ||
-          metaDuration ||
-          DEFAULT_DURATION_DAYS;
-
-        const expire = addDays(start, days);
-        await user.update({ isVip: true, vipExpiresAt: expire });
-      }
+      console.log(`[stripeWebhook] ✅ Post ${postId} VIP activated until ${vipExpiresAt.toISOString()}`);
     }
 
-    // Stripe yêu cầu trả 2xx nhanh
+    // Stripe yêu cầu phản hồi nhanh
     return res.json({ received: true });
   } catch (err) {
     console.error("[stripeWebhook] handler error:", err);
-    // vẫn trả 200 để Stripe không retry quá nhiều, nhưng ghi log để xử lý sau
     return res.json({ received: true });
   }
 };

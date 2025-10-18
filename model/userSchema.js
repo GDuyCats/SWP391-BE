@@ -49,9 +49,6 @@ export const createUserModel = (sequelize) => {
             type: DataTypes.BOOLEAN,
             defaultValue: false
         },
-
-        isVip: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
-        vipExpiresAt: { type: DataTypes.DATE, allowNull: true },
         
         refreshToken: {
             type: DataTypes.TEXT,

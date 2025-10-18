@@ -22,6 +22,7 @@ import contract_admin_routes from "./routes/contract.admin.routes.js";
 import contract_staff_routes from "./routes/contract.staff.routes.js";
 import contract_viewer_routes from "./routes/contract.viewer.routes.js"
 import contract_otp_routes from "./routes/contract.otp.routes.js";
+import verify_routes from "./routes/mail.routes.js"
 dotenv.config();
 
 const app = express();
@@ -97,6 +98,7 @@ app.use("/admin/contracts", contract_admin_routes);
 app.use("/staff/contracts", contract_staff_routes);
 app.use("/me", contract_viewer_routes)
 app.use("/", contract_otp_routes);
+app.use(verify_routes);
 // --- Swagger ---
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 

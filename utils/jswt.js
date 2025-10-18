@@ -23,7 +23,12 @@ const generateVerifyEmailToken = (user) => {
     // tokenVersion: user.tokenVersion ?? 0,
     purpose: 'verify-email',
   };
-  return jswt.sign(payload, process.env.JWT_SECRET_VERIFYEMAIL, { expiresIn: '120s' });
+  return jswt.sign(
+    payload,
+    // ✅ fallback nếu bạn chưa set JWT_SECRET_VERIFYEMAIL
+    process.env.JWT_SECRET_VERIFYEMAIL || process.env.JWT_SECRET,
+    { expiresIn: '15m' }
+  );
 };
 
 const generateRefreshToken = (user) => {
@@ -38,7 +43,6 @@ const generateRefreshToken = (user) => {
       expiresIn: "15d",
       issuer: '2ndev',
     },
-
   );
   return token
 }
