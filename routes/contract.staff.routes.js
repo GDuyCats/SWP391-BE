@@ -7,7 +7,7 @@ const router = Router();
 
 /**
  * @swagger
- * /contracts/appointment:
+ * /staff/contracts/appointment:
  *   post:
  *     summary: Staff ghi nhận lịch hẹn giữa buyer và seller
  *     description: >
