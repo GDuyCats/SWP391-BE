@@ -8,7 +8,7 @@ const router = Router();
 // Người dùng xem hợp đồng của chính mình (buyer/seller/staff/admin)
 /**
  * @swagger
- * /contracts/{id}:
+ * /me/contracts/{id}:
  *   get:
  *     summary: Xem hợp đồng của chính mình
  *     description: >
