@@ -88,7 +88,7 @@ const router = Router();
 
 /**
  * @swagger
- * /contracts/finalize:
+ * staff/contracts/finalize:
  *   post:
  *     summary: Staff chốt thương lượng và hoàn tất giai đoạn thương lượng
  *     description: >
