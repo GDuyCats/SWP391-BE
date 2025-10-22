@@ -7,7 +7,8 @@ import { createPostModel } from "../model/postsSchema.js";
 import { createVipPurchaseModel } from "../model/vipPurchaseSchema.js";
 import { createVipPlanModel } from "../model/vipPlanSchema.js";
 import { createContractModel } from "../model/contractSchema.js";
-
+import { createBatteryDetailModel } from "../model/BatteryDetailSchema.js";
+import { createVehicleDetailModel } from "../model/VehicleDetailSchema.js";
 dotenv.config();
 
 // ===== Kết nối =====
@@ -39,7 +40,8 @@ export const PostModel = createPostModel(sequelize);
 export const VipPlanModel = createVipPlanModel(sequelize);
 export const VipPurchaseModel = createVipPurchaseModel(sequelize);
 export const ContractModel = createContractModel(sequelize);
-
+export const BatteryDetailModel = createBatteryDetailModel(sequelize);
+export const VehicleDetailModel = createVehicleDetailModel(sequelize);
 // ===== Associations =====
 
 // 👤 USER ↔ 📄 POST
@@ -50,6 +52,13 @@ PostModel.belongsTo(UserModel, { foreignKey: "userId" });
 // (Mỗi bài đăng được gắn với một gói VIP cụ thể)
 VipPlanModel.hasMany(PostModel, { foreignKey: "vipPlanId", onDelete: "SET NULL" });
 PostModel.belongsTo(VipPlanModel, { foreignKey: "vipPlanId" });
+
+// 📄 POST ↔  CAR_MODEL
+PostModel.hasOne(VehicleDetailModel, { foreignKey: "postId", onDelete: "CASCADE" });
+VehicleDetailModel.belongsTo(PostModel, { foreignKey: "postId" });
+// 📄 POST ↔  BATTERY_MODEL
+PostModel.hasOne(BatteryDetailModel, { foreignKey: "postId", onDelete: "CASCADE" });
+BatteryDetailModel.belongsTo(PostModel, { foreignKey: "postId" });
 
 // 👤 USER ↔ 💰 VIP PURCHASE (Giao dịch)
 UserModel.hasMany(VipPurchaseModel, { foreignKey: "userId", onDelete: "CASCADE" });

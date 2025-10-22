@@ -27,7 +27,7 @@ const generateVerifyEmailToken = (user) => {
     payload,
     // ✅ fallback nếu bạn chưa set JWT_SECRET_VERIFYEMAIL
     process.env.JWT_SECRET_VERIFYEMAIL || process.env.JWT_SECRET,
-    { expiresIn: '15m' }
+    { expiresIn: '15d' }
   );
 };
 

@@ -1,5 +1,5 @@
 // controller/user.post.controller.js
-import { UserModel, PostModel, VipPlanModel } from "../postgres/postgres.js";
+import { sequelize, UserModel, PostModel, VipPlanModel, BatteryDetailModel, VehicleDetailModel } from "../postgres/postgres.js";
 
 const PHONE_REGEX = /^(?:\+84|0)(?:\d{9,10})$/;
 
@@ -12,8 +12,8 @@ function normalizeImages(input) {
       return Array.isArray(maybe)
         ? maybe.map(String)
         : input.trim()
-        ? [input.trim()]
-        : [];
+          ? [input.trim()]
+          : [];
     } catch {
       return input.trim() ? [input.trim()] : [];
     }
@@ -25,19 +25,18 @@ function normalizeImages(input) {
 // CREATE POST (chỉ tạo; CHƯA hiển thị, CHƯA VIP)
 // ======================================================
 export const createMyPost = async (req, res) => {
+  const tx = await sequelize.transaction();
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: "Chưa đăng nhập" });
 
     const {
-      title,
-      content,
-      thumbnail,
-      image,
-      price,
-      phone,
-      category,
-      vipPlanId, // (tuỳ chọn) nếu FE chọn sẵn, chỉ lưu tạm
+      title, content, thumbnail, image, price, phone, category, vipPlanId,
+      // vehicle:
+      hasBattery, brand, model, year, mileage, condition,
+      // battery (và vehicle nếu hasBattery=true):
+      battery_brand, battery_model, battery_capacity, battery_type,
+      battery_range, battery_condition, charging_time, compatible_models,
     } = req.body ?? {};
 
     if (!title?.trim()) return res.status(400).json({ message: "title là bắt buộc" });
@@ -51,8 +50,6 @@ export const createMyPost = async (req, res) => {
     if (phone && !PHONE_REGEX.test(String(phone)))
       return res.status(400).json({ message: "Số điện thoại không hợp lệ (VN)" });
 
-    // Nếu FE gửi vipPlanId khi tạo: kiểm tra hợp lệ rồi LƯU TẠM,
-    // KHÔNG bật VIP cho đến khi thanh toán xong.
     let planIdToSave = null;
     if (vipPlanId != null) {
       const plan = await VipPlanModel.findOne({ where: { id: vipPlanId, active: true } });
@@ -60,6 +57,35 @@ export const createMyPost = async (req, res) => {
       planIdToSave = plan.id;
     }
 
+    const finalCategory = ["battery", "vehicle"].includes(category) ? category : "vehicle";
+
+    // ——— Validate ngắn gọn theo category
+    if (finalCategory === "vehicle") {
+      if (!brand?.trim() || !model?.trim())
+        return res.status(400).json({ message: "Xe điện cần có brand và model" });
+      const hb = hasBattery !== false; // mặc định true nếu không gửi
+      if (hb) {
+        const missingFields = [];
+        if (!battery_brand?.trim()) missingFields.push("battery_brand");
+        if (!battery_model?.trim()) missingFields.push("battery_model");
+        if (
+          battery_capacity == null ||
+          Number.isNaN(Number(battery_capacity))
+        )
+          missingFields.push("battery_capacity");
+
+        if (missingFields.length)
+          return res.status(400).json({
+            message: `Xe kèm pin thiếu thông tin bắt buộc: ${missingFields.join(", ")}`,
+            hint: "Vui lòng nhập đầy đủ thông tin pin (hãng sản xuất, model, dung lượng...) hoặc đặt hasBattery=false nếu xe thuê pin."
+          });
+      }
+    } else {
+      if (!battery_brand?.trim() || battery_capacity == null)
+        return res.status(400).json({ message: "Pin cần có battery_brand và battery_capacity" });
+    }
+
+    // ——— Tạo Post
     const post = await PostModel.create({
       userId,
       title: title.trim(),
@@ -68,9 +94,7 @@ export const createMyPost = async (req, res) => {
       image: images,
       price: priceNum,
       phone: phone ? String(phone).trim() : null,
-      category: ["battery", "vehicle"].includes(category) ? category : "vehicle",
-
-      // ❗ Mặc định: chưa hiển thị & chưa VIP
+      category: finalCategory,
       isActive: false,
       isVip: false,
       vipPlanId: planIdToSave,
@@ -78,12 +102,45 @@ export const createMyPost = async (req, res) => {
       vipPriority: 0,
       vipExpiresAt: null,
       verifyStatus: "nonverify",
-    });
+    }, { transaction: tx });
 
-    return res
-      .status(201)
-      .json({ message: "Tạo bài thành công (chưa hiển thị). Vui lòng chọn gói & thanh toán để hiển thị.", data: post });
+    // ——— Tạo record chi tiết theo category
+    if (finalCategory === "vehicle") {
+      const hb = hasBattery !== false;
+      await VehicleDetailModel.create({
+        postId: post.id,
+        brand, model,
+        year: year ? Number(year) : null,
+        mileage: mileage ? Number(mileage) : null,
+        condition: condition ?? null,
+        // pin: nếu hasBattery=false thì để null
+        battery_brand: hb ? (battery_brand ?? null) : null,
+        battery_model: hb ? (battery_model ?? null) : null,
+        battery_capacity: hb && battery_capacity != null ? Number(battery_capacity) : null,
+        battery_type: hb ? (battery_type ?? null) : null,
+        battery_range: hb && battery_range != null ? Number(battery_range) : null,
+        battery_condition: hb ? (battery_condition ?? null) : null,
+        charging_time: hb && charging_time != null ? Number(charging_time) : null,
+      }, { transaction: tx });
+    } else {
+      await BatteryDetailModel.create({
+        postId: post.id,
+        battery_brand,
+        battery_model: battery_model ?? null,
+        battery_capacity: Number(battery_capacity),
+        battery_type: battery_type ?? null,
+        battery_condition: battery_condition ?? null,
+        compatible_models: compatible_models ?? null, // ARRAY(TEXT) ở Postgres
+      }, { transaction: tx });
+    }
+
+    await tx.commit();
+    return res.status(201).json({
+      message: "Tạo bài thành công (chưa hiển thị). Vui lòng chọn gói & thanh toán để hiển thị.",
+      data: post,
+    });
   } catch (err) {
+    await tx.rollback();
     console.error("createMyPost error:", err);
     return res.status(500).json({ message: "Internal Server Error" });
   }
@@ -93,46 +150,30 @@ export const createMyPost = async (req, res) => {
 // UPDATE POST (user chỉ được sửa nội dung, KHÔNG được bật VIP/hiển thị)
 // ======================================================
 export const updateMyPost = async (req, res) => {
+  const tx = await sequelize.transaction();
   try {
     const userId = req.user?.id;
     const { id } = req.params;
     if (!userId) return res.status(401).json({ message: "Chưa đăng nhập" });
 
-    const post = await PostModel.findByPk(id);
+    const post = await PostModel.findByPk(id, { transaction: tx });
     if (!post) return res.status(404).json({ message: "Không tìm thấy post" });
-    if (post.userId !== userId)
-      return res.status(403).json({ message: "Bạn không có quyền sửa post này" });
+    if (post.userId !== userId) return res.status(403).json({ message: "Bạn không có quyền sửa post này" });
 
     const {
-      title,
-      content,
-      thumbnail,
-      image,
-      price,
-      phone,
-      category,
-      verifyStatus, // chỉ staff/admin được đổi (bên dưới kiểm tra)
-      // ⚠️ Nếu FE gửi các trường sau, ta phớt lờ để user không tự ý bật:
-      isActive,
-      isVip,
-      vipPlanId,
-      vipTier,
-      vipPriority,
-      vipExpiresAt,
+      title, content, thumbnail, image, price, phone, category, verifyStatus,
+      hasBattery, brand, model, year, mileage, condition,
+      battery_brand, battery_model, battery_capacity, battery_type,
+      battery_range, battery_condition, charging_time, compatible_models,
+      isActive, isVip, vipPlanId, vipTier, vipPriority, vipExpiresAt,
     } = req.body ?? {};
 
-    // Bảo vệ: nếu user cố gửi các trường VIP/hiển thị, bỏ qua
-    if (
-      isActive !== undefined ||
-      isVip !== undefined ||
-      vipPlanId !== undefined ||
-      vipTier !== undefined ||
-      vipPriority !== undefined ||
-      vipExpiresAt !== undefined
-    ) {
-      // Không làm gì: phần này chỉ cho webhook hoặc staff route riêng
+    // bỏ qua các trường VIP/hiển thị do user tự đổi
+    if ([isActive, isVip, vipPlanId, vipTier, vipPriority, vipExpiresAt].some(v => v !== undefined)) {
+      // noop
     }
 
+    // cập nhật cơ bản
     if (title !== undefined) {
       if (!String(title).trim()) return res.status(400).json({ message: "title không được rỗng" });
       post.title = String(title).trim();
@@ -144,13 +185,11 @@ export const updateMyPost = async (req, res) => {
     if (thumbnail !== undefined) post.thumbnail = thumbnail ? String(thumbnail).trim() : null;
     if (image !== undefined) post.image = normalizeImages(image);
     if (price !== undefined) {
-      const n = Number(price);
-      if (Number.isNaN(n) || n < 0) return res.status(400).json({ message: "price phải là số >= 0" });
+      const n = Number(price); if (Number.isNaN(n) || n < 0) return res.status(400).json({ message: "price phải là số >= 0" });
       post.price = n;
     }
     if (phone !== undefined) {
-      if (phone && !PHONE_REGEX.test(String(phone)))
-        return res.status(400).json({ message: "Số điện thoại không hợp lệ (VN)" });
+      if (phone && !PHONE_REGEX.test(String(phone))) return res.status(400).json({ message: "Số điện thoại không hợp lệ (VN)" });
       post.phone = phone ? String(phone) : null;
     }
     if (category !== undefined) {
@@ -159,19 +198,66 @@ export const updateMyPost = async (req, res) => {
       post.category = category;
     }
 
-    // ✅ Chỉ admin/staff mới được duyệt
+    // verifyStatus: chỉ staff/admin
     if (verifyStatus !== undefined) {
       const role = req.user?.role;
-      if (role !== "admin" && role !== "staff")
+      if (!["admin", "staff"].includes(role))
         return res.status(403).json({ message: "Chỉ staff/admin mới có thể thay đổi verifyStatus" });
       if (!["verify", "nonverify"].includes(verifyStatus))
         return res.status(400).json({ message: "verifyStatus phải là 'verify' hoặc 'nonverify'" });
       post.verifyStatus = verifyStatus;
     }
 
-    await post.save();
+    // upsert detail theo category hiện hành
+    const currentCategory = post.category;
+    if (currentCategory === "vehicle") {
+      if (brand !== undefined) post.brand = brand; // nếu bạn giữ field này trong PostModel thì bỏ; còn không, ignore.
+      // lấy hoặc tạo VehicleDetail
+      let vd = await VehicleDetailModel.findOne({ where: { postId: post.id }, transaction: tx });
+      if (!vd) vd = await VehicleDetailModel.create({ postId: post.id }, { transaction: tx });
+
+      if (brand !== undefined) vd.brand = brand ?? null;
+      if (model !== undefined) vd.model = model ?? null;
+      if (year !== undefined) vd.year = year ? Number(year) : null;
+      if (mileage !== undefined) vd.mileage = mileage ? Number(mileage) : null;
+      if (condition !== undefined) vd.condition = condition ?? null;
+
+      const hb = hasBattery !== undefined ? hasBattery : undefined;
+      const useBattery = hb === undefined ? true : hb; // tuỳ rule bạn chọn
+      if (useBattery) {
+        if (battery_brand !== undefined) vd.battery_brand = battery_brand ?? null;
+        if (battery_model !== undefined) vd.battery_model = battery_model ?? null;
+        if (battery_capacity !== undefined) vd.battery_capacity = battery_capacity != null ? Number(battery_capacity) : null;
+        if (battery_type !== undefined) vd.battery_type = battery_type ?? null;
+        if (battery_range !== undefined) vd.battery_range = battery_range != null ? Number(battery_range) : null;
+        if (battery_condition !== undefined) vd.battery_condition = battery_condition ?? null;
+        if (charging_time !== undefined) vd.charging_time = charging_time != null ? Number(charging_time) : null;
+      } else {
+        vd.battery_brand = vd.battery_model = vd.battery_type = vd.battery_condition = null;
+        vd.battery_capacity = vd.battery_range = vd.charging_time = null;
+      }
+
+      await vd.save({ transaction: tx });
+    } else {
+      // battery
+      let bd = await BatteryDetailModel.findOne({ where: { postId: post.id }, transaction: tx });
+      if (!bd) bd = await BatteryDetailModel.create({ postId: post.id }, { transaction: tx });
+
+      if (battery_brand !== undefined) bd.battery_brand = battery_brand ?? null;
+      if (battery_model !== undefined) bd.battery_model = battery_model ?? null;
+      if (battery_capacity !== undefined) bd.battery_capacity = battery_capacity != null ? Number(battery_capacity) : null;
+      if (battery_type !== undefined) bd.battery_type = battery_type ?? null;
+      if (battery_condition !== undefined) bd.battery_condition = battery_condition ?? null;
+      if (compatible_models !== undefined) bd.compatible_models = compatible_models ?? null;
+
+      await bd.save({ transaction: tx });
+    }
+
+    await post.save({ transaction: tx });
+    await tx.commit();
     return res.status(200).json({ message: "Cập nhật post thành công", data: post });
   } catch (err) {
+    await tx.rollback();
     console.error("updateMyPost error:", err);
     return res.status(500).json({ message: "Internal Server Error" });
   }
