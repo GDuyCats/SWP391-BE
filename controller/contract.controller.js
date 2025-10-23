@@ -22,11 +22,11 @@ export const createPurchaseRequest = async (req, res) => {
       return res.status(404).json({ message: "Post not found" });
     }
 
-    if (post.verifyStatus !== "verify") {
-      return res.status(400).json({
-        message: "This post has not been verified by staff yet. You cannot send a purchase request.",
-      });
-    }
+    // if (post.verifyStatus !== "verify") {
+    //   return res.status(400).json({
+    //     message: "This post has not been verified by staff yet. You cannot send a purchase request.",
+    //   });
+    // }
 
     if (post.category === "battery") {
       return res.status(400).json({

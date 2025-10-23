@@ -7,8 +7,9 @@ import { createPostModel } from "../model/postsSchema.js";
 import { createVipPurchaseModel } from "../model/vipPurchaseSchema.js";
 import { createVipPlanModel } from "../model/vipPlanSchema.js";
 import { createContractModel } from "../model/contractSchema.js";
-import { createBatteryDetailModel } from "../model/BatteryDetailSchema.js";
-import { createVehicleDetailModel } from "../model/VehicleDetailSchema.js";
+import { createBatteryDetailModel } from "../model/batteryDetailSchema.js";
+import { createVehicleDetailModel } from "../model/vehicleDetailSchema.js";
+import { createPurchaseRequestModel } from "../model/purchaseRequestSchema.js";
 dotenv.config();
 
 // ===== Kết nối =====
@@ -42,6 +43,7 @@ export const VipPurchaseModel = createVipPurchaseModel(sequelize);
 export const ContractModel = createContractModel(sequelize);
 export const BatteryDetailModel = createBatteryDetailModel(sequelize);
 export const VehicleDetailModel = createVehicleDetailModel(sequelize);
+export const PurchaseRequestModel = createPurchaseRequestModel(sequelize);
 // ===== Associations =====
 
 // 👤 USER ↔ 📄 POST
@@ -83,7 +85,26 @@ ContractModel.belongsTo(UserModel, { as: "staff", foreignKey: "staffId" });
 UserModel.hasMany(ContractModel, { as: "contractsAsBuyer", foreignKey: "buyerId" });
 UserModel.hasMany(ContractModel, { as: "contractsAsSeller", foreignKey: "sellerId" });
 UserModel.hasMany(ContractModel, { as: "contractsAsStaff", foreignKey: "staffId" });
-
+// 🆕 USER ↔ PURCHASE_REQUEST
+UserModel.hasMany(PurchaseRequestModel, { as: "purchaseRequestsAsBuyer", foreignKey: "buyerId", onDelete: "CASCADE" });
+UserModel.hasMany(PurchaseRequestModel, { as: "purchaseRequestsAsSeller", foreignKey: "sellerId", onDelete: "CASCADE" });
+UserModel.hasMany(PurchaseRequestModel, { as: "handledRequests", foreignKey: "handledBy", onDelete: "SET NULL" });
+PurchaseRequestModel.belongsTo(UserModel, { as: "buyer", foreignKey: "buyerId" });
+PurchaseRequestModel.belongsTo(UserModel, { as: "seller", foreignKey: "sellerId" });
+PurchaseRequestModel.belongsTo(UserModel, { as: "handler", foreignKey: "handledBy" });
+// 🆕 POST ↔ PURCHASE_REQUEST
+PostModel.hasMany(PurchaseRequestModel, { foreignKey: "postId", onDelete: "CASCADE" });
+PurchaseRequestModel.belongsTo(PostModel, { foreignKey: "postId" });
+// 🆕 CONTRACT ↔ PURCHASE_REQUEST
+// Khi accept request sẽ tạo Contract và gắn requestId.
+// Chọn SET NULL để nếu lỡ xóa request vẫn giữ được hợp đồng lịch sử.
+PurchaseRequestModel.hasOne(ContractModel, { foreignKey: "requestId", onDelete: "SET NULL" });
+ContractModel.belongsTo(PurchaseRequestModel, { foreignKey: "requestId" });
+// 🆕 CONTRACT ↔ POST (tùy chọn – nếu có field postId trong Contract)
+if (ContractModel.rawAttributes.postId) {
+  ContractModel.belongsTo(PostModel, { foreignKey: "postId" });
+  PostModel.hasMany(ContractModel, { foreignKey: "postId", onDelete: "CASCADE" });
+}
 // ===== Sync Database =====
 export const connectDB = async () => {
   await sequelize.authenticate();

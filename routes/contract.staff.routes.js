@@ -2,6 +2,7 @@
 import { Router } from "express";
 import authenticateToken from "../middleware/authenticateToken.js";
 import { recordAppointment, finalizeNegotiation } from "../controller/contract.controller.js";
+import isStaff from "../middleware/isStaff.js";
 
 const router = Router();
 
@@ -174,6 +175,6 @@ const router = Router();
  */
 
 // Staff ghi nhận lịch hẹn
-router.post("/appointment", authenticateToken, recordAppointment);
-router.post("/finalize", authenticateToken, finalizeNegotiation);
+router.post("/appointment",isStaff, authenticateToken, recordAppointment);
+router.post("/finalize",isStaff, authenticateToken, finalizeNegotiation);
 export default router;

@@ -4,6 +4,7 @@ import {
   listActivePlans,
   checkoutFromPlan,
 } from "../controller/billing.plan.controller.js";
+import isCustomer from "../middleware/isCustomer.js";
 
 const router = Router();
 
@@ -108,7 +109,7 @@ const router = Router();
  *         description: Internal server error during checkout creation.
  */
 
-router.get("/", listActivePlans);
-router.post("/checkout", authenticateToken, checkoutFromPlan);
+router.get("/", isCustomer, listActivePlans);
+router.post("/checkout", isCustomer, authenticateToken, checkoutFromPlan);
 
 export default router;

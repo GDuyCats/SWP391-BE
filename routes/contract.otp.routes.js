@@ -2,6 +2,7 @@
 import { Router } from "express";
 import authenticateToken from "../middleware/authenticateToken.js";
 import { sendContractOtp, verifyContractOtp } from "../controller/contract.controller.js";
+import isStaff from "../middleware/isStaff.js";
 
 const router = Router();
 /**
@@ -182,9 +183,9 @@ const router = Router();
  */
 
 // Staff/Admin gửi OTP
-router.post("/staff/contracts/send-otp", authenticateToken, sendContractOtp);
+router.post("/staff/contracts/send-otp",isStaff, authenticateToken, sendContractOtp);
 
 // Buyer/Seller xác nhận OTP
-router.post("/contracts/verify-otp", authenticateToken, verifyContractOtp);
+router.post("/contracts/verify-otp",isStaff, authenticateToken, verifyContractOtp);
 
 export default router;

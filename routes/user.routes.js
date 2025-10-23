@@ -3,6 +3,7 @@ import { Router } from "express";
 import { profileController, updateMyProfile } from "../controller/user.controller.js";
 import { getMyPurchases } from "../controller/user.controller.js";
 import authenticateToken from "../middleware/authenticateToken.js";
+import isCustomer from "../middleware/isCustomer.js";
 
 const router = Router();
 
@@ -132,6 +133,6 @@ router.patch("/update", authenticateToken, updateMyProfile);
  *       500:
  *         description: Internal server error
  */
-router.get("/purchases", authenticateToken, getMyPurchases);
+router.get("/purchases",isCustomer, authenticateToken, getMyPurchases);
 
 export default router;

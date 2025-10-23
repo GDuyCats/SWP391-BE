@@ -50,7 +50,7 @@ const router = Router();
  *       500:
  *         description: Lỗi server nội bộ
  */
-router.patch("/:id/verify", authenticateToken, isStaffOrAdmin, verifyPost);
+router.patch("/:id/verify", authenticateToken, isStaff, verifyPost);
 
 /**
  * @openapi
@@ -68,6 +68,6 @@ router.patch("/:id/verify", authenticateToken, isStaffOrAdmin, verifyPost);
  *       500:
  *         description: Internal server error
  */
-router.get("/all", authenticateToken, isStaffOrAdmin, getAllPosts);
+router.get("/all",isStaff, authenticateToken, isStaffOrAdmin, getAllPosts);
 
 export default router;

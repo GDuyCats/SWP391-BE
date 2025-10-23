@@ -9,6 +9,7 @@ import {
   getUserPosts,
 } from "../controller/user.post.controller.js";
 import { enforcePostQuota } from "../middleware/enforcePostQuota.js";
+import isCustomer from "../middleware/isCustomer.js";
 
 const router = Router();
 
@@ -227,7 +228,7 @@ router.patch(
  *       500:
  *         description: Internal server error
  */
-router.delete("/delete/:id", authenticateToken, deleteMyPost);
+router.delete("/delete/:id",isCustomer, authenticateToken, deleteMyPost);
 
 /**
  * @openapi
@@ -242,7 +243,7 @@ router.delete("/delete/:id", authenticateToken, deleteMyPost);
  *       401: { description: Unauthorized }
  *       500: { description: Internal server error }
  */
-router.get("/me/post", authenticateToken, getMyPosts);
+router.get("/me/post",isCustomer, authenticateToken, getMyPosts);
 
 /**
  * @openapi
@@ -261,6 +262,6 @@ router.get("/me/post", authenticateToken, getMyPosts);
  *       404: { description: User or posts not found }
  *       500: { description: Internal server error }
  */
-router.get("/user/:userId", authenticateToken, getUserPosts);
+router.get("/user/:userId",isCustomer, authenticateToken, getUserPosts);
 
 export default router;

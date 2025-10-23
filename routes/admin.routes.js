@@ -81,7 +81,7 @@ import isAdmin from "../middleware/isAdmin.js";
 const router = express.Router();
 
 router.get('/user',authenticateToken, isAdmin, getUsers)
-router.post('/create_user', createUsers)
+router.post('/create_user', isAdmin, createUsers)
 router.put('/user/:id', authenticateToken, isAdmin, updateUsers)
 router.delete('/user/:id', authenticateToken, isAdmin, deleteUsers)
 // router.get("/admin/dashboard", authenticateToken, isAdmin, getAdminDashboard);
