@@ -4,6 +4,9 @@ import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import swaggerUi from "swagger-ui-express";
+
+import { createRouteHandler } from "uploadthing/express";
+import { uploadRouter } from "./utils/uploadthing.js";
 import { swaggerSpec } from "./docs/swagger.js";
 import { stripeWebhook } from "./controller/stripe.controller.js";
 import { connectDB } from "./postgres/postgres.js";
@@ -41,6 +44,13 @@ app.post(
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(
+  "/api/uploadthing",
+  createRouteHandler({
+    router: uploadRouter,
+    // không cần truyền token ở đây, SDK tự đọc từ process.env.UPLOADTHING_TOKEN
+  })
+);
 
 // --- CORS with whitelist (multi-origins) ---
 const DEFAULT_ORIGINS = [

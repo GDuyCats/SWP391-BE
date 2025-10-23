@@ -11,7 +11,7 @@ const router = Router();
  * @openapi
  * /{id}/verify:
  *   patch:
- *     summary: Staff verify or unverify a post
+ *     summary: Staff or Admin verify or unverify a post
  *     description: Chỉ admin hoặc staff mới có thể cập nhật trạng thái duyệt bài. Field `verifyStatus` chỉ chấp nhận `"verify"` hoặc `"nonverify"`.
  *     tags: [Posts (Verify)]
  *     security:
@@ -50,7 +50,7 @@ const router = Router();
  *       500:
  *         description: Lỗi server nội bộ
  */
-router.patch("/:id/verify", authenticateToken, isStaff, verifyPost);
+router.patch("/:id/verify", authenticateToken, isStaffOrAdmin, verifyPost);
 
 /**
  * @openapi

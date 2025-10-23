@@ -1,6 +1,7 @@
 // controller/user.post.controller.js
 import { sequelize, UserModel, PostModel, VipPlanModel, BatteryDetailModel, VehicleDetailModel } from "../postgres/postgres.js";
-
+import { UTApi } from "uploadthing/server"
+const utapi = new UTApi();
 const PHONE_REGEX = /^(?:\+84|0)(?:\d{9,10})$/;
 
 // === Helper ===
@@ -42,7 +43,38 @@ export const createMyPost = async (req, res) => {
     if (!title?.trim()) return res.status(400).json({ message: "title là bắt buộc" });
     if (!content?.trim()) return res.status(400).json({ message: "content là bắt buộc" });
 
-    const images = normalizeImages(image);
+    // ==== Upload file nếu có ====
+    let thumbnailUrl = thumbnail ? String(thumbnail).trim() : null;
+    let images = normalizeImages(image);
+
+    // Upload thumbnailFile (1 ảnh)
+    const thFile = req.files?.thumbnailFile?.[0];
+    if (thFile) {
+      const f = new File([thFile.buffer], thFile.originalname, { type: thFile.mimetype });
+      const r = await utapi.uploadFiles(f);
+      const item = Array.isArray(r) ? r[0] : r;
+      if (item?.error) throw new Error(item.error.message || "Upload thumbnail failed");
+      thumbnailUrl = item.data?.url ?? null;
+    }
+
+    // Upload imageFiles (nhiều ảnh)
+    const galFiles = req.files?.imageFiles || [];
+    if (galFiles.length) {
+      const fs = galFiles.map((x) => new File([x.buffer], x.originalname, { type: x.mimetype }));
+      const outs = await utapi.uploadFiles(fs);
+      const urls = outs.filter(o => !o.error && o.data?.url).map(o => o.data.url);
+      images = [...images, ...urls];
+    }
+
+    // ✅ BẮT BUỘC CÓ ẢNH
+    if (!thumbnailUrl || !String(thumbnailUrl).trim()) {
+      return res.status(400).json({ message: "Bắt buộc phải có ảnh thumbnail" });
+    }
+    if (!Array.isArray(images) || images.length === 0) {
+      return res.status(400).json({ message: "Bắt buộc phải có ít nhất 1 ảnh trong danh sách image" });
+    }
+
+    // ==== Validate các field khác ====
     const priceNum = Number(price ?? 0);
     if (Number.isNaN(priceNum) || priceNum < 0)
       return res.status(400).json({ message: "price phải là số >= 0" });
@@ -53,16 +85,20 @@ export const createMyPost = async (req, res) => {
     let planIdToSave = null;
     if (vipPlanId != null) {
       const plan = await VipPlanModel.findOne({ where: { id: vipPlanId, active: true } });
-      if (!plan) return res.status(404).json({ message: "Gói VIP không tồn tại hoặc đã bị tắt" });
+      if (!plan)
+        return res.status(404).json({ message: "Gói VIP không tồn tại hoặc đã bị tắt" });
       planIdToSave = plan.id;
     }
 
-    const finalCategory = ["battery", "vehicle"].includes(category) ? category : "vehicle";
+    const finalCategory = ["battery", "vehicle"].includes(category)
+      ? category
+      : "vehicle";
 
-    // ——— Validate ngắn gọn theo category
+    // Validate category logic cũ
     if (finalCategory === "vehicle") {
       if (!brand?.trim() || !model?.trim())
         return res.status(400).json({ message: "Xe điện cần có brand và model" });
+
       const hb = hasBattery !== false; // mặc định true nếu không gửi
       if (hb) {
         const missingFields = [];
@@ -77,72 +113,90 @@ export const createMyPost = async (req, res) => {
         if (missingFields.length)
           return res.status(400).json({
             message: `Xe kèm pin thiếu thông tin bắt buộc: ${missingFields.join(", ")}`,
-            hint: "Vui lòng nhập đầy đủ thông tin pin (hãng sản xuất, model, dung lượng...) hoặc đặt hasBattery=false nếu xe thuê pin."
+            hint:
+              "Vui lòng nhập đầy đủ thông tin pin hoặc đặt hasBattery=false nếu xe thuê pin.",
           });
       }
     } else {
       if (!battery_brand?.trim() || battery_capacity == null)
-        return res.status(400).json({ message: "Pin cần có battery_brand và battery_capacity" });
+        return res.status(400).json({
+          message: "Pin cần có battery_brand và battery_capacity",
+        });
     }
 
-    // ——— Tạo Post
-    const post = await PostModel.create({
-      userId,
-      title: title.trim(),
-      content: content.trim(),
-      thumbnail: thumbnail ? String(thumbnail).trim() : null,
-      image: images,
-      price: priceNum,
-      phone: phone ? String(phone).trim() : null,
-      category: finalCategory,
-      isActive: false,
-      isVip: false,
-      vipPlanId: planIdToSave,
-      vipTier: null,
-      vipPriority: 0,
-      vipExpiresAt: null,
-      verifyStatus: "nonverify",
-    }, { transaction: tx });
+    // ==== Tạo Post ====
+    const post = await PostModel.create(
+      {
+        userId,
+        title: title.trim(),
+        content: content.trim(),
+        thumbnail: thumbnailUrl,
+        image: images,
+        price: priceNum,
+        phone: phone ? String(phone).trim() : null,
+        category: finalCategory,
+        isActive: false,
+        isVip: false,
+        vipPlanId: planIdToSave,
+        vipTier: null,
+        vipPriority: 0,
+        vipExpiresAt: null,
+        verifyStatus: "nonverify",
+      },
+      { transaction: tx }
+    );
 
-    // ——— Tạo record chi tiết theo category
+    // ==== Tạo chi tiết theo category ====
     if (finalCategory === "vehicle") {
       const hb = hasBattery !== false;
-      await VehicleDetailModel.create({
-        postId: post.id,
-        brand, model,
-        year: year ? Number(year) : null,
-        mileage: mileage ? Number(mileage) : null,
-        condition: condition ?? null,
-        // pin: nếu hasBattery=false thì để null
-        battery_brand: hb ? (battery_brand ?? null) : null,
-        battery_model: hb ? (battery_model ?? null) : null,
-        battery_capacity: hb && battery_capacity != null ? Number(battery_capacity) : null,
-        battery_type: hb ? (battery_type ?? null) : null,
-        battery_range: hb && battery_range != null ? Number(battery_range) : null,
-        battery_condition: hb ? (battery_condition ?? null) : null,
-        charging_time: hb && charging_time != null ? Number(charging_time) : null,
-      }, { transaction: tx });
+      await VehicleDetailModel.create(
+        {
+          postId: post.id,
+          brand,
+          model,
+          year: year ? Number(year) : null,
+          mileage: mileage ? Number(mileage) : null,
+          condition: condition ?? null,
+          battery_brand: hb ? battery_brand ?? null : null,
+          battery_model: hb ? battery_model ?? null : null,
+          battery_capacity:
+            hb && battery_capacity != null ? Number(battery_capacity) : null,
+          battery_type: hb ? battery_type ?? null : null,
+          battery_range:
+            hb && battery_range != null ? Number(battery_range) : null,
+          battery_condition: hb ? battery_condition ?? null : null,
+          charging_time:
+            hb && charging_time != null ? Number(charging_time) : null,
+        },
+        { transaction: tx }
+      );
     } else {
-      await BatteryDetailModel.create({
-        postId: post.id,
-        battery_brand,
-        battery_model: battery_model ?? null,
-        battery_capacity: Number(battery_capacity),
-        battery_type: battery_type ?? null,
-        battery_condition: battery_condition ?? null,
-        compatible_models: compatible_models ?? null, // ARRAY(TEXT) ở Postgres
-      }, { transaction: tx });
+      await BatteryDetailModel.create(
+        {
+          postId: post.id,
+          battery_brand,
+          battery_model: battery_model ?? null,
+          battery_capacity: Number(battery_capacity),
+          battery_type: battery_type ?? null,
+          battery_condition: battery_condition ?? null,
+          compatible_models: compatible_models ?? null,
+        },
+        { transaction: tx }
+      );
     }
 
     await tx.commit();
     return res.status(201).json({
-      message: "Tạo bài thành công (chưa hiển thị). Vui lòng chọn gói & thanh toán để hiển thị.",
+      message:
+        "Tạo bài thành công (chưa hiển thị). Vui lòng chọn gói & thanh toán để hiển thị.",
       data: post,
     });
   } catch (err) {
     await tx.rollback();
     console.error("createMyPost error:", err);
-    return res.status(500).json({ message: "Internal Server Error" });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: err.message });
   }
 };
 
@@ -158,7 +212,8 @@ export const updateMyPost = async (req, res) => {
 
     const post = await PostModel.findByPk(id, { transaction: tx });
     if (!post) return res.status(404).json({ message: "Không tìm thấy post" });
-    if (post.userId !== userId) return res.status(403).json({ message: "Bạn không có quyền sửa post này" });
+    if (post.userId !== userId)
+      return res.status(403).json({ message: "Bạn không có quyền sửa post này" });
 
     const {
       title, content, thumbnail, image, price, phone, category, verifyStatus,
@@ -168,12 +223,32 @@ export const updateMyPost = async (req, res) => {
       isActive, isVip, vipPlanId, vipTier, vipPriority, vipExpiresAt,
     } = req.body ?? {};
 
-    // bỏ qua các trường VIP/hiển thị do user tự đổi
+    // ===== Upload file nếu có =====
+    let newThumb = undefined;
+    let newImagesAppend = [];
+
+    const thFileU = req.files?.thumbnailFile?.[0];
+    if (thFileU) {
+      const f = new File([thFileU.buffer], thFileU.originalname, { type: thFileU.mimetype });
+      const r = await utapi.uploadFiles(f);
+      const item = Array.isArray(r) ? r[0] : r;
+      if (item?.error) throw new Error(item.error.message || "Upload thumbnail failed");
+      newThumb = item.data?.url ?? null;
+    }
+
+    const galFilesU = req.files?.imageFiles || [];
+    if (galFilesU.length) {
+      const fs = galFilesU.map((x) => new File([x.buffer], x.originalname, { type: x.mimetype }));
+      const outs = await utapi.uploadFiles(fs);
+      newImagesAppend = outs.filter(o => !o.error && o.data?.url).map(o => o.data.url);
+    }
+
+    // ===== Bỏ qua VIP fields =====
     if ([isActive, isVip, vipPlanId, vipTier, vipPriority, vipExpiresAt].some(v => v !== undefined)) {
       // noop
     }
 
-    // cập nhật cơ bản
+    // ===== Cập nhật cơ bản =====
     if (title !== undefined) {
       if (!String(title).trim()) return res.status(400).json({ message: "title không được rỗng" });
       post.title = String(title).trim();
@@ -182,23 +257,55 @@ export const updateMyPost = async (req, res) => {
       if (!String(content).trim()) return res.status(400).json({ message: "content không được rỗng" });
       post.content = String(content).trim();
     }
-    if (thumbnail !== undefined) post.thumbnail = thumbnail ? String(thumbnail).trim() : null;
-    if (image !== undefined) post.image = normalizeImages(image);
+
+    if (newThumb !== undefined) {
+      post.thumbnail = newThumb;
+    } else if (thumbnail !== undefined) {
+      post.thumbnail = thumbnail ? String(thumbnail).trim() : null;
+    }
+
+    if (image !== undefined) {
+      post.image = normalizeImages(image);
+    }
+    if (newImagesAppend.length) {
+      const cur = Array.isArray(post.image) ? post.image : [];
+      post.image = [...cur, ...newImagesAppend];
+    }
+
     if (price !== undefined) {
-      const n = Number(price); if (Number.isNaN(n) || n < 0) return res.status(400).json({ message: "price phải là số >= 0" });
+      const n = Number(price);
+      if (Number.isNaN(n) || n < 0)
+        return res.status(400).json({ message: "price phải là số >= 0" });
       post.price = n;
     }
+
     if (phone !== undefined) {
-      if (phone && !PHONE_REGEX.test(String(phone))) return res.status(400).json({ message: "Số điện thoại không hợp lệ (VN)" });
+      if (phone && !PHONE_REGEX.test(String(phone)))
+        return res.status(400).json({ message: "Số điện thoại không hợp lệ (VN)" });
       post.phone = phone ? String(phone) : null;
     }
+
     if (category !== undefined) {
       if (!["battery", "vehicle"].includes(category))
         return res.status(400).json({ message: "category phải là 'battery' hoặc 'vehicle'" });
       post.category = category;
     }
 
-    // verifyStatus: chỉ staff/admin
+    // ✅ === CHECK BẮT BUỘC CÓ ẢNH ===
+    const thumbToCheck = newThumb ?? thumbnail ?? post.thumbnail;
+    const imagesToCheck = newImagesAppend.length
+      ? newImagesAppend
+      : (image ? normalizeImages(image) : post.image);
+
+    if (!thumbToCheck || !String(thumbToCheck).trim()) {
+      return res.status(400).json({ message: "Bắt buộc phải có ảnh thumbnail" });
+    }
+
+    if (!Array.isArray(imagesToCheck) || imagesToCheck.length === 0) {
+      return res.status(400).json({ message: "Bắt buộc phải có ít nhất 1 ảnh trong danh sách image" });
+    }
+
+    // ===== verifyStatus: chỉ staff/admin =====
     if (verifyStatus !== undefined) {
       const role = req.user?.role;
       if (!["admin", "staff"].includes(role))
@@ -208,11 +315,10 @@ export const updateMyPost = async (req, res) => {
       post.verifyStatus = verifyStatus;
     }
 
-    // upsert detail theo category hiện hành
+    // ===== Update chi tiết theo category =====
     const currentCategory = post.category;
+
     if (currentCategory === "vehicle") {
-      if (brand !== undefined) post.brand = brand; // nếu bạn giữ field này trong PostModel thì bỏ; còn không, ignore.
-      // lấy hoặc tạo VehicleDetail
       let vd = await VehicleDetailModel.findOne({ where: { postId: post.id }, transaction: tx });
       if (!vd) vd = await VehicleDetailModel.create({ postId: post.id }, { transaction: tx });
 
@@ -223,7 +329,7 @@ export const updateMyPost = async (req, res) => {
       if (condition !== undefined) vd.condition = condition ?? null;
 
       const hb = hasBattery !== undefined ? hasBattery : undefined;
-      const useBattery = hb === undefined ? true : hb; // tuỳ rule bạn chọn
+      const useBattery = hb === undefined ? true : hb;
       if (useBattery) {
         if (battery_brand !== undefined) vd.battery_brand = battery_brand ?? null;
         if (battery_model !== undefined) vd.battery_model = battery_model ?? null;
@@ -239,7 +345,6 @@ export const updateMyPost = async (req, res) => {
 
       await vd.save({ transaction: tx });
     } else {
-      // battery
       let bd = await BatteryDetailModel.findOne({ where: { postId: post.id }, transaction: tx });
       if (!bd) bd = await BatteryDetailModel.create({ postId: post.id }, { transaction: tx });
 
@@ -284,7 +389,6 @@ export const deleteMyPost = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
 // ======================================================
 // GET MY POSTS
 // ======================================================

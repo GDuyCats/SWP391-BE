@@ -1,7 +1,7 @@
 import { PostModel } from "../postgres/postgres.js";
 
 // Tối đa 10 bài VIP còn hiệu lực cùng lúc
-const MAX_ACTIVE_VIP_POSTS = 3;
+// const MAX_ACTIVE_VIP_POSTS = 3;
 
 export const enforcePostQuota = async (req, res, next) => {
   try {
@@ -17,11 +17,11 @@ export const enforcePostQuota = async (req, res, next) => {
       },
     });
 
-    if (activeCount >= MAX_ACTIVE_VIP_POSTS) {
-      return res.status(403).json({
-        message: `Bạn chỉ được phép có tối đa ${MAX_ACTIVE_VIP_POSTS} bài VIP đang hoạt động. Vui lòng ẩn hoặc chờ hết hạn để đăng thêm.`,
-      });
-    }
+    // if (activeCount >= MAX_ACTIVE_VIP_POSTS) {
+    //   return res.status(403).json({
+    //     message: `Bạn chỉ được phép có tối đa ${MAX_ACTIVE_VIP_POSTS} bài VIP đang hoạt động. Vui lòng ẩn hoặc chờ hết hạn để đăng thêm.`,
+    //   });
+    // }
 
     return next();
   } catch (err) {
