@@ -2,7 +2,7 @@
 import { PostModel, UserModel } from "../postgres/postgres.js";
 
 const PUBLIC_POST_ATTRS = [
-  "id", "title", "detail", "content", "price",
+  "id", "title", "price",
   "category", "verifyStatus", "isActive",
   "isVip", "vipPriority", "createdAt", "updatedAt",
 ];
