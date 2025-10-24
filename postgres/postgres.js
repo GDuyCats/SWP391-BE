@@ -39,11 +39,13 @@ export const sequelize = new Sequelize(DB_URL, {
 export const UserModel = createUserModel(sequelize);
 export const PostModel = createPostModel(sequelize);
 export const VipPlanModel = createVipPlanModel(sequelize);
+export const PurchaseRequestModel = createPurchaseRequestModel(sequelize);
 export const VipPurchaseModel = createVipPurchaseModel(sequelize);
+
 export const ContractModel = createContractModel(sequelize);
 export const BatteryDetailModel = createBatteryDetailModel(sequelize);
 export const VehicleDetailModel = createVehicleDetailModel(sequelize);
-export const PurchaseRequestModel = createPurchaseRequestModel(sequelize);
+
 // ===== Associations =====
 
 // 👤 USER ↔ 📄 POST

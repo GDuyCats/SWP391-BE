@@ -81,7 +81,7 @@ export const createPurchaseRequestModel = (sequelize) => {
       },
     },
     {
-      tableName: "purchase_requests",
+      tableName: "PurchaseRequests",
       timestamps: true,
     }
   );
