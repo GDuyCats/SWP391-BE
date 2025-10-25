@@ -2,11 +2,22 @@
 import { PostModel, UserModel } from "../postgres/postgres.js";
 
 const PUBLIC_POST_ATTRS = [
-  "id", "title", "price",
-  "category", "verifyStatus", "isActive",
-  "isVip", "vipPriority", "createdAt", "updatedAt",
-];
+  "id",
+  "title",
+  "price",
+  "category",
+  "verifyStatus",
+  "isActive",
 
+  // VIP fields bắt buộc cho validator hiện tại
+  "isVip",
+  "vipPriority",
+  "vipExpiresAt",
+  "vipTier",
+
+  "createdAt",
+  "updatedAt",
+];
 /**
  * GET /admin/posts
  * - Admin: thấy tất cả
