@@ -105,7 +105,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 // 👇 THÊM upload.fields(...) trước controller để parse form-data
 router.post(
   "/create",
-  authenticateToken,
+  authenticateToken, isCustomer,
   enforcePostQuota,
   upload.fields([
     { name: "thumbnailFile", maxCount: 1 },
@@ -195,7 +195,7 @@ router.post(
 // 👇 THÊM upload.fields(...) để có thể update ảnh qua file (tuỳ chọn)
 router.patch(
   "/post/:id",
-  authenticateToken,
+  authenticateToken, isCustomer,
   upload.fields([
     { name: "thumbnailFile", maxCount: 1 },
     { name: "imageFiles", maxCount: 12 },
@@ -228,7 +228,7 @@ router.patch(
  *       500:
  *         description: Internal server error
  */
-router.delete("/delete/:id",isCustomer, authenticateToken, deleteMyPost);
+router.delete("/delete/:id",authenticateToken, isCustomer, deleteMyPost);
 
 /**
  * @openapi
@@ -243,7 +243,7 @@ router.delete("/delete/:id",isCustomer, authenticateToken, deleteMyPost);
  *       401: { description: Unauthorized }
  *       500: { description: Internal server error }
  */
-router.get("/me/post",isCustomer, authenticateToken, getMyPosts);
+router.get("/me/post", authenticateToken, isCustomer, getMyPosts);
 
 /**
  * @openapi
@@ -262,6 +262,6 @@ router.get("/me/post",isCustomer, authenticateToken, getMyPosts);
  *       404: { description: User or posts not found }
  *       500: { description: Internal server error }
  */
-router.get("/user/:userId",isCustomer, authenticateToken, getUserPosts);
+router.get("/user/:userId",authenticateToken, isCustomer , getUserPosts);
 
 export default router;
