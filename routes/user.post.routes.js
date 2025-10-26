@@ -27,7 +27,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:          # ✅ Giữ nguyên: gửi URL ảnh
+ *           multipart/form-data:         # ✅ Giữ nguyên: gửi URL ảnh
  *           schema:
  *             type: object
  *             properties:
@@ -113,7 +113,6 @@ router.post(
   ]),
   createMyPost
 );
-
 /**
  * @openapi
  * /post/{id}:
@@ -131,7 +130,7 @@ router.post(
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *           multipart/form-data:
  *           schema:
  *             type: object
  *             properties:
