@@ -24,7 +24,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/PurchaseRequests:
+ * /PurchaseRequests:
  *   post:
  *     tags: [Purchase Requests]
  *     summary: Buyer gửi yêu cầu mua bài đăng
@@ -59,7 +59,7 @@ router.post("/", authenticateToken,isCustomer, createPurchaseRequest);
 
 /**
  * @openapi
- * /api/PurchaseRequests/{id}/accept:
+ * /PurchaseRequests/{id}/accept:
  *   patch:
  *     tags: [Purchase Requests]
  *     summary: Seller chấp nhận yêu cầu mua
@@ -88,7 +88,7 @@ router.patch("/:id/accept", authenticateToken, isCustomer, acceptPurchaseRequest
 
 /**
  * @openapi
- * /api/PurchaseRequests/{id}/reject:
+ * /PurchaseRequests/{id}/reject:
  *   patch:
  *     tags: [Purchase Requests]
  *     summary: Seller từ chối yêu cầu mua
@@ -124,7 +124,7 @@ router.patch("/:id/reject", authenticateToken, isCustomer, rejectPurchaseRequest
 
 /**
  * @openapi
- * /api/PurchaseRequests/{id}/withdraw:
+ * /PurchaseRequests/{id}/withdraw:
  *   patch:
  *     tags: [Purchase Requests]
  *     summary: Buyer rút lại yêu cầu mua
@@ -155,7 +155,7 @@ router.patch("/:id/withdraw", authenticateToken, isCustomer, withdrawPurchaseReq
 
 /**
  * @openapi
- * /api/PurchaseRequests/post/{postId}:
+ * /PurchaseRequests/post/{postId}:
  *   get:
  *     tags: [Purchase Requests]
  *     summary: Seller/Admin xem danh sách request theo bài post
@@ -183,7 +183,7 @@ router.get("/post/:postId", authenticateToken,isCustomer , isAdmin, listPurchase
 
 /**
  * @openapi
- * /api/PurchaseRequests/me:
+ * /PurchaseRequests/me:
  *   get:
  *     tags: [Purchase Requests]
  *     summary: Buyer xem danh sách các yêu cầu của chính mình
@@ -217,7 +217,7 @@ router.get("/me", authenticateToken,isCustomer, listMyPurchaseRequests);
 
 /**
  * @openapi
- * /api/PurchaseRequests/{id}:
+ * /PurchaseRequests/{id}:
  *   get:
  *     tags: [Purchase Requests]
  *     summary: Xem chi tiết 1 yêu cầu
@@ -245,7 +245,7 @@ router.get("/:id", authenticateToken, getPurchaseRequestById);
 
 /**
  * @openapi
- * /api/PurchaseRequests/admin:
+ * /PurchaseRequests/admin:
  *   get:
  *     tags: [Purchase Requests]
  *     summary: Admin xem toàn bộ yêu cầu mua
