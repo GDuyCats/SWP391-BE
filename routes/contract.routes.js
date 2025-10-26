@@ -87,6 +87,6 @@ const router = Router();
  */
 
 // Buyer gửi yêu cầu mua
-router.post("/request",isCustomer, authenticateToken, createPurchaseRequest);
+router.post("/request",authenticateToken ,isCustomer , createPurchaseRequest);
 
 export default router;

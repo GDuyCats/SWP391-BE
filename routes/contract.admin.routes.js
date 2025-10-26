@@ -106,6 +106,6 @@ const router = Router();
  */
 
 // Admin gán staff cho hợp đồng
-router.post("/assign-staff",isAdmin , authenticateToken, assignStaffToContract);
+router.post("/assign-staff" , authenticateToken,isAdmin, assignStaffToContract);
 
 export default router;

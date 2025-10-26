@@ -175,6 +175,6 @@ const router = Router();
  */
 
 // Staff ghi nhận lịch hẹn
-router.post("/appointment",isStaff, authenticateToken, recordAppointment);
-router.post("/finalize",isStaff, authenticateToken, finalizeNegotiation);
+router.post("/appointment", authenticateToken,isStaff, recordAppointment);
+router.post("/finalize", authenticateToken,isStaff, finalizeNegotiation);
 export default router;

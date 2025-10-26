@@ -10,6 +10,8 @@ import {
   getPurchaseRequestById,
   adminListPurchaseRequests,
 } from "../controller/purchaseRequest.controller.js";
+import isCustomer from "../middleware/isCustomer.js";
+import isAdmin from "../middleware/isAdmin.js";
 
 const router = Router();
 
@@ -28,7 +30,7 @@ const router = Router();
  *     summary: Buyer gửi yêu cầu mua bài đăng
  *     description: |
  *       - Buyer gửi yêu cầu mua đến bài đăng xe.  
- *       - Không thể gửi yêu cầu cho bài của chính mình hoặc cho bài chưa được verify.  
+ *       - Không thể gửi yêu cầu cho bài của chính mình hoặc cho bài chưa được active.  
  *       - Mỗi Buyer chỉ có thể có **1 yêu cầu pending** cho cùng 1 bài post.
  *     security:
  *       - bearerAuth: []
@@ -53,17 +55,17 @@ const router = Router();
  *       500:
  *         description: Internal server error
  */
-router.post("/", authenticateToken, createPurchaseRequest);
+router.post("/", authenticateToken,isCustomer, createPurchaseRequest);
 
 /**
  * @openapi
  * /api/PurchaseRequests/{id}/accept:
  *   patch:
  *     tags: [Purchase Requests]
- *     summary: Seller/Admin/Staff chấp nhận yêu cầu mua
+ *     summary: Seller chấp nhận yêu cầu mua
  *     description: |
  *       - Khi chấp nhận, hệ thống tự động tạo **Contract** mới với trạng thái `pending`.  
- *       - Chỉ `admin`, `staff`, hoặc `seller` của bài đăng mới có quyền thao tác.
+ *       - Chỉ `seller` của bài đăng mới có quyền thao tác.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -82,17 +84,17 @@ router.post("/", authenticateToken, createPurchaseRequest);
  *       500:
  *         description: Internal server error
  */
-router.patch("/:id/accept", authenticateToken, acceptPurchaseRequest);
+router.patch("/:id/accept", authenticateToken, isCustomer, acceptPurchaseRequest);
 
 /**
  * @openapi
  * /api/PurchaseRequests/{id}/reject:
  *   patch:
  *     tags: [Purchase Requests]
- *     summary: Seller/Admin/Staff từ chối yêu cầu mua
+ *     summary: Seller từ chối yêu cầu mua
  *     description: |
  *       - Có thể gửi kèm `reason` để ghi chú lý do từ chối.  
- *       - Chỉ `admin`, `staff`, hoặc `seller` của bài đăng mới có quyền thao tác.
+ *       - Chỉ `seller` của bài đăng mới có quyền thao tác.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -118,7 +120,7 @@ router.patch("/:id/accept", authenticateToken, acceptPurchaseRequest);
  *       500:
  *         description: Internal server error
  */
-router.patch("/:id/reject", authenticateToken, rejectPurchaseRequest);
+router.patch("/:id/reject", authenticateToken, isCustomer, rejectPurchaseRequest);
 
 /**
  * @openapi
@@ -149,7 +151,7 @@ router.patch("/:id/reject", authenticateToken, rejectPurchaseRequest);
  *       500:
  *         description: Internal server error
  */
-router.patch("/:id/withdraw", authenticateToken, withdrawPurchaseRequest);
+router.patch("/:id/withdraw", authenticateToken, isCustomer, withdrawPurchaseRequest);
 
 /**
  * @openapi
@@ -177,7 +179,7 @@ router.patch("/:id/withdraw", authenticateToken, withdrawPurchaseRequest);
  *       500:
  *         description: Internal server error
  */
-router.get("/post/:postId", authenticateToken, listPurchaseRequestsByPost);
+router.get("/post/:postId", authenticateToken,isCustomer , isAdmin, listPurchaseRequestsByPost);
 
 /**
  * @openapi
@@ -211,7 +213,7 @@ router.get("/post/:postId", authenticateToken, listPurchaseRequestsByPost);
  *       500:
  *         description: Internal server error
  */
-router.get("/me", authenticateToken, listMyPurchaseRequests);
+router.get("/me", authenticateToken,isCustomer, listMyPurchaseRequests);
 
 /**
  * @openapi
@@ -288,6 +290,6 @@ router.get("/:id", authenticateToken, getPurchaseRequestById);
  *       500:
  *         description: Internal server error
  */
-router.get("/admin", authenticateToken, adminListPurchaseRequests);
+router.get("/admin", authenticateToken, isAdmin, adminListPurchaseRequests);
 
 export default router;

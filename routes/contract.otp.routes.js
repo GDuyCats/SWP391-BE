@@ -183,9 +183,9 @@ const router = Router();
  */
 
 // Staff/Admin gửi OTP
-router.post("/staff/contracts/send-otp",isStaff, authenticateToken, sendContractOtp);
+router.post("/staff/contracts/send-otp",authenticateToken ,isStaff , sendContractOtp);
 
 // Buyer/Seller xác nhận OTP
-router.post("/contracts/verify-otp",isStaff, authenticateToken, verifyContractOtp);
+router.post("/contracts/verify-otp",authenticateToken ,isStaff , verifyContractOtp);
 
 export default router;

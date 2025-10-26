@@ -94,6 +94,6 @@ const router = Router();
  *               $ref: '#/components/schemas/Error'
  */
 
-router.get("/contracts/:id", isCustomer, authenticateToken, getContractForViewer);
+router.get("/contracts/:id", authenticateToken, isCustomer, getContractForViewer);
 
 export default router;

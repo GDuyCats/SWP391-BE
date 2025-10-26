@@ -109,7 +109,7 @@ const router = Router();
  *         description: Internal server error during checkout creation.
  */
 
-router.get("/", isCustomer, listActivePlans);
-router.post("/checkout", isCustomer, authenticateToken, checkoutFromPlan);
+router.get("/",authenticateToken, isCustomer, listActivePlans);
+router.post("/checkout",authenticateToken, isCustomer, checkoutFromPlan);
 
 export default router;
