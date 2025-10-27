@@ -32,7 +32,7 @@ export const createMyPost = async (req, res) => {
     if (!userId) return res.status(401).json({ message: "Chưa đăng nhập" });
 
     const {
-      title, content, thumbnail, image, price, phone, category, vipPlanId,
+      title, content, thumbnail, image, price, phone, category,
       // vehicle:
       hasBattery, brand, model, year, mileage, condition,
       // battery (và vehicle nếu hasBattery=true):
@@ -83,12 +83,12 @@ export const createMyPost = async (req, res) => {
       return res.status(400).json({ message: "Số điện thoại không hợp lệ (VN)" });
 
     let planIdToSave = null;
-    if (vipPlanId != null) {
-      const plan = await VipPlanModel.findOne({ where: { id: vipPlanId, active: true } });
-      if (!plan)
-        return res.status(404).json({ message: "Gói VIP không tồn tại hoặc đã bị tắt" });
-      planIdToSave = plan.id;
-    }
+    // if (vipPlanId != null) {
+    //   const plan = await VipPlanModel.findOne({ where: { id: vipPlanId, active: true } });
+    //   if (!plan)
+    //     return res.status(404).json({ message: "Gói VIP không tồn tại hoặc đã bị tắt" });
+    //   planIdToSave = plan.id;
+    // }
 
     const finalCategory = ["battery", "vehicle"].includes(category)
       ? category
@@ -137,7 +137,7 @@ export const createMyPost = async (req, res) => {
         category: finalCategory,
         isActive: false,
         isVip: false,
-        vipPlanId: planIdToSave,
+        // vipPlanId: planIdToSave,
         vipTier: null,
         vipPriority: 0,
         vipExpiresAt: null,
@@ -220,7 +220,7 @@ export const updateMyPost = async (req, res) => {
       hasBattery, brand, model, year, mileage, condition,
       battery_brand, battery_model, battery_capacity, battery_type,
       battery_range, battery_condition, charging_time, compatible_models,
-      isActive, isVip, vipPlanId, vipTier, vipPriority, vipExpiresAt,
+      isActive, isVip, vipTier, vipPriority, vipExpiresAt,
     } = req.body ?? {};
 
     // ===== Upload file nếu có =====

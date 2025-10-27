@@ -47,10 +47,6 @@ const upload = multer({ storage: multer.memoryStorage() });
  *                 type: string
  *                 enum: [battery, vehicle]
  *                 example: vehicle
- *               vipPlanId:
- *                 type: integer
- *                 nullable: true
- *                 example: 1
  *               hasBattery:
  *                 type: boolean
  *                 example: true
