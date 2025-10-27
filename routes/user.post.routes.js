@@ -106,8 +106,6 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         description: Invalid data
  *       401:
  *         description: Unauthorized
- *       404:
- *         description: VIP plan not found
  *       500:
  *         description: Internal server error
  */
