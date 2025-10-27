@@ -11,7 +11,7 @@ const generateAccessToken = (user) => {
   };
   return jswt.sign(payload, process.env.JWT_SECRET_ACCESSTOKEN, 
     { 
-      expiresIn: '10m',
+      expiresIn: '15d',
       issuer: '2ndev' 
     });
 }
@@ -27,7 +27,7 @@ const generateVerifyEmailToken = (user) => {
     payload,
     // ✅ fallback nếu bạn chưa set JWT_SECRET_VERIFYEMAIL
     process.env.JWT_SECRET_VERIFYEMAIL || process.env.JWT_SECRET,
-    { expiresIn: '15d' }
+    { expiresIn: '10m' }
   );
 };
 
