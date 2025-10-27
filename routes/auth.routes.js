@@ -59,7 +59,7 @@ router.post('/register', registerController)
  *                 example: test123
  *               password:
  *                 type: string
- *                 example: StrongP@ssw0rd
+ *                 example: 1234567890
  *     responses:
  *       200:
  *         description: Login successful, returns access token and refresh token
