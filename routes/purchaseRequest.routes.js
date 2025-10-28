@@ -12,6 +12,7 @@ import {
 } from "../controller/purchaseRequest.controller.js";
 import isCustomer from "../middleware/isCustomer.js";
 import isAdmin from "../middleware/isAdmin.js";
+import isCustomerOrAdmin from "../middleware/isCustomerAndAdmin.js";
 
 const router = Router();
 
@@ -226,7 +227,7 @@ router.patch("/:id/withdraw", authenticateToken, isCustomer, withdrawPurchaseReq
  *       500:
  *         description: Internal server error
  */
-router.get("/post/:postId", authenticateToken,isCustomer , isAdmin, listPurchaseRequestsByPost);
+router.get("/post/:postId", authenticateToken, isCustomerOrAdmin, listPurchaseRequestsByPost);
 
 /**
  * @openapi
