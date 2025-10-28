@@ -21,7 +21,54 @@ const router = Router();
  *   - name: Purchase Requests
  *     description: API quản lý yêu cầu mua xe giữa Buyer – Seller – Staff – Admin
  */
-
+/**
+ * @openapi
+ * /PurchaseRequests/admin:
+ *   get:
+ *     tags: [Purchase Requests]
+ *     summary: Admin xem toàn bộ yêu cầu mua
+ *     description: |
+ *       - Admin có thể xem tất cả yêu cầu, lọc theo status, postId, buyerId, sellerId, handledBy, createdAt range.  
+ *       - Hỗ trợ phân trang và sắp xếp.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [pending, accepted, rejected, withdrawn, expired] }
+ *       - in: query
+ *         name: postId
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: buyerId
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: sellerId
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: handledBy
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: from
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: to
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, example: 1 }
+ *       - in: query
+ *         name: pageSize
+ *         schema: { type: integer, example: 10 }
+ *     responses:
+ *       200:
+ *         description: Danh sách request cho admin
+ *       403:
+ *         description: Admin only
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/admin", authenticateToken, isAdmin, adminListPurchaseRequests);
 /**
  * @openapi
  * /PurchaseRequests:
@@ -243,53 +290,6 @@ router.get("/me", authenticateToken,isCustomer, listMyPurchaseRequests);
  */
 router.get("/:id", authenticateToken, getPurchaseRequestById);
 
-/**
- * @openapi
- * /PurchaseRequests/admin:
- *   get:
- *     tags: [Purchase Requests]
- *     summary: Admin xem toàn bộ yêu cầu mua
- *     description: |
- *       - Admin có thể xem tất cả yêu cầu, lọc theo status, postId, buyerId, sellerId, handledBy, createdAt range.  
- *       - Hỗ trợ phân trang và sắp xếp.
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: status
- *         schema: { type: string, enum: [pending, accepted, rejected, withdrawn, expired] }
- *       - in: query
- *         name: postId
- *         schema: { type: integer }
- *       - in: query
- *         name: buyerId
- *         schema: { type: integer }
- *       - in: query
- *         name: sellerId
- *         schema: { type: integer }
- *       - in: query
- *         name: handledBy
- *         schema: { type: integer }
- *       - in: query
- *         name: from
- *         schema: { type: string, format: date-time }
- *       - in: query
- *         name: to
- *         schema: { type: string, format: date-time }
- *       - in: query
- *         name: page
- *         schema: { type: integer, example: 1 }
- *       - in: query
- *         name: pageSize
- *         schema: { type: integer, example: 10 }
- *     responses:
- *       200:
- *         description: Danh sách request cho admin
- *       403:
- *         description: Admin only
- *       500:
- *         description: Internal server error
- */
-router.get("/admin", authenticateToken, isAdmin, adminListPurchaseRequests);
+
 
 export default router;
