@@ -1,7 +1,7 @@
 // routes/contract.staff.routes.js
 import { Router } from "express";
 import authenticateToken from "../middleware/authenticateToken.js";
-import { recordAppointment, finalizeNegotiation } from "../controller/contract.controller.js";
+import { recordAppointment, finalizeNegotiation, listStaffContracts } from "../controller/contract.controller.js";
 import isStaff from "../middleware/isStaff.js";
 
 const router = Router();
@@ -177,4 +177,19 @@ const router = Router();
 // Staff ghi nhận lịch hẹn
 router.post("/appointment", authenticateToken,isStaff, recordAppointment);
 router.post("/finalize", authenticateToken,isStaff, finalizeNegotiation);
+/**
+ * @openapi
+ * /staff/contracts/AllContracts
+ *   get:
+ *     summary: Staff xem các contract đã được assign
+ *     tags: [Contracts - Staff]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get(
+  "/allContracts",
+  authenticateToken,
+  isStaff,           // chỉ staff mới gọi được
+  listStaffContracts
+);
 export default router;
