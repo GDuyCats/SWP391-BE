@@ -1,4 +1,51 @@
-// routes/contract.admin.routes.js
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Contract:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 12
+ *         buyerId:
+ *           type: integer
+ *           example: 8
+ *         sellerId:
+ *           type: integer
+ *           example: 4
+ *         staffId:
+ *           type: integer
+ *           nullable: true
+ *           example: 5
+ *         postId:
+ *           type: integer
+ *           example: 31
+ *         status:
+ *           type: string
+ *           enum: [pending, negotiating, meeting_scheduled, waiting_signature, completed, cancelled]
+ *           example: negotiating
+ *         otpCode:
+ *           type: string
+ *           nullable: true
+ *           example: "593201"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           example: "2025-10-16T12:30:00Z"
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           example: "2025-10-16T13:22:00Z"
+ *
+ *     Error:
+ *       type: object
+ *       properties:
+ *         message:
+ *           type: string
+ *           example: "Only admin can assign staff to contracts."
+ */
+
 import { Router } from "express";
 import authenticateToken from "../middleware/authenticateToken.js";
 import { assignStaffToContract, listAllContractsForAdmin } from "../controller/contract.controller.js";
@@ -106,7 +153,8 @@ const router = Router();
  */
 
 // Admin gán staff cho hợp đồng
-router.post("/assign-staff" , authenticateToken,isAdmin, assignStaffToContract);
+router.post("/assign-staff" , authenticateToken, isAdmin, assignStaffToContract);
+
 /**
  * @openapi
  * /admin/contracts/allContract:
@@ -122,4 +170,5 @@ router.get(
   isAdmin,           // chỉ admin mới gọi được
   listAllContractsForAdmin
 );
+
 export default router;
