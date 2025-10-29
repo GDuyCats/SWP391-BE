@@ -109,7 +109,7 @@ const router = Router();
 router.post("/assign-staff" , authenticateToken,isAdmin, assignStaffToContract);
 /**
  * @openapi
- * /contracts/admin:
+ * /allContract:
  *   get:
  *     summary: Admin xem toàn bộ contract
  *     tags: [Contracts]
