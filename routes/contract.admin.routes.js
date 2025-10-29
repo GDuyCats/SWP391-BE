@@ -117,7 +117,7 @@ router.post("/assign-staff" , authenticateToken,isAdmin, assignStaffToContract);
  *       - bearerAuth: []
  */
 router.get(
-  "/admin",
+  "/allContract",
   authenticateToken,
   isAdmin,           // chỉ admin mới gọi được
   listAllContractsForAdmin
