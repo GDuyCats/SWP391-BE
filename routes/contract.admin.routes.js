@@ -167,7 +167,7 @@ router.post("/assign-staff", authenticateToken, isAdmin, assignStaffToContract);
  * /admin/contracts/allContract:
  *   get:
  *     summary: Admin xem toàn bộ contract
- *     tags: [Contracts]
+ *     tags: [Contracts - Admin]
  *     security:
  *       - bearerAuth: []
  *     responses:
