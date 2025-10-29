@@ -1,6 +1,11 @@
 import { Router } from "express";
 import authenticateToken from "../middleware/authenticateToken.js";
-import { recordAppointment, finalizeNegotiation, listStaffContracts } from "../controller/contract.controller.js";
+import {
+  recordAppointment,
+  finalizeNegotiation,
+  listStaffContracts,
+  sendFinalContractToParties,
+} from "../controller/contract.controller.js";
 import isStaff from "../middleware/isStaff.js";
 
 const router = Router();
@@ -175,6 +180,102 @@ const router = Router();
 
 /**
  * @swagger
+ * /staff/contracts/send-final:
+ *   post:
+ *     summary: Staff gửi hợp đồng cuối cùng (đã ký) cho Buyer và Seller
+ *     description: >
+ *       Khi cả Buyer và Seller đã ký OTP và trạng thái contract là **signed**,  
+ *       staff phụ trách hợp đồng có thể gửi email bản tóm tắt hợp đồng cho cả hai bên.  
+ *       Sau khi gửi thành công, trạng thái hợp đồng chuyển sang **completed**.
+ *     tags: [Contracts - Staff]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - contractId
+ *             properties:
+ *               contractId:
+ *                 type: integer
+ *                 example: 8
+ *     responses:
+ *       200:
+ *         description: Gửi hợp đồng hoàn tất thành công và cập nhật trạng thái completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Final signed contract sent to buyer and seller. Contract marked as completed.
+ *                 nextStatus:
+ *                   type: string
+ *                   example: completed
+ *                 contractId:
+ *                   type: integer
+ *                   example: 8
+ *                 sentTo:
+ *                   type: object
+ *                   properties:
+ *                     buyerEmail:
+ *                       type: string
+ *                       example: buyer@example.com
+ *                     sellerEmail:
+ *                       type: string
+ *                       example: seller@example.com
+ *       400:
+ *         description: Chưa đủ điều kiện gửi (chưa signed đủ 2 bên hoặc trạng thái không phải 'signed')
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *             examples:
+ *               notSigned:
+ *                 value: { message: "Both buyer and seller must sign before sending final contract" }
+ *               wrongStatus:
+ *                 value: { message: "Contract is not fully signed yet" }
+ *       401:
+ *         description: Thiếu hoặc sai token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *             example:
+ *               message: "Missing auth payload"
+ *       403:
+ *         description: Staff không phải người được assign vào hợp đồng này
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *             examples:
+ *               notAssigned:
+ *                 value: { message: "You are not assigned to this contract" }
+ *               notStaff:
+ *                 value: { message: "Only staff can send finalized contracts" }
+ *       404:
+ *         description: Không tìm thấy hợp đồng
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *             example:
+ *               message: "Contract not found"
+ *       500:
+ *         description: Lỗi máy chủ
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
+/**
+ * @swagger
  * /staff/contracts/allContracts:
  *   get:
  *     summary: Staff xem các contract đã được assign
@@ -249,6 +350,9 @@ router.post("/appointment", authenticateToken, isStaff, recordAppointment);
 
 // Staff chốt thương lượng
 router.post("/finalize", authenticateToken, isStaff, finalizeNegotiation);
+
+// Staff gửi hợp đồng cuối cùng cho buyer & seller, chuyển trạng thái -> completed
+router.post("/send-final", authenticateToken, isStaff, sendFinalContractToParties);
 
 // Staff xem danh sách hợp đồng được assign
 router.get(

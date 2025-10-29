@@ -638,3 +638,123 @@ export const listAllContractsForAdmin = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
+export const sendFinalContractToParties = async (req, res) => {
+  try {
+    const staff = req.user; // staff login
+    const { contractId } = req.body;
+
+    // 1. Auth basic
+    if (!staff?.id) {
+      return res.status(401).json({ message: "Missing auth payload" });
+    }
+    if (staff.role !== "staff") {
+      return res.status(403).json({ message: "Only staff can send finalized contracts" });
+    }
+    if (!contractId) {
+      return res.status(400).json({ message: "contractId is required" });
+    }
+
+    // 2. Lấy contract
+    const contract = await ContractModel.findByPk(contractId);
+    if (!contract) {
+      return res.status(404).json({ message: "Contract not found" });
+    }
+
+    // 3. Chỉ staff đã assign mới được gửi
+    if (contract.staffId !== staff.id) {
+      return res.status(403).json({ message: "You are not assigned to this contract" });
+    }
+
+    // 4. Hợp đồng phải ở trạng thái 'signed' và có đủ chữ ký
+    if (contract.status !== "signed") {
+      return res.status(400).json({ message: "Contract is not fully signed yet" });
+    }
+    if (!contract.buyerSignedAt || !contract.sellerSignedAt) {
+      return res.status(400).json({
+        message: "Both buyer and seller must sign before sending final contract",
+      });
+    }
+
+    // 5. Lấy thông tin buyer / seller để gửi mail
+    const [buyer, seller] = await Promise.all([
+      UserModel.findByPk(contract.buyerId, {
+        attributes: ["username", "email"],
+      }),
+      UserModel.findByPk(contract.sellerId, {
+        attributes: ["username", "email"],
+      }),
+    ]);
+
+    if (!buyer || !seller) {
+      return res.status(500).json({ message: "Missing buyer/seller user data" });
+    }
+
+    // 6. Build nội dung hợp đồng tóm tắt để gửi mail
+    const summaryHtml = `
+      <div style="font-family:Arial,sans-serif; line-height:1.5">
+        <h2>Hợp đồng mua bán #${contract.id}</h2>
+
+        <p><b>Trạng thái:</b> ĐÃ KÝ bởi cả hai bên (Buyer & Seller)</p>
+        <p><b>Thời điểm ký hoàn tất:</b> ${contract.signedAt ?? contract.updatedAt}</p>
+        
+        <h3>Thông tin giao dịch</h3>
+        <ul>
+          <li><b>Giá chốt:</b> ${contract.agreedPrice ?? "N/A"}</li>
+          <li><b>Phí Buyer (%):</b> ${contract.buyerFeePercent ?? 0}%</li>
+          <li><b>Phí Seller (%):</b> ${contract.sellerFeePercent ?? 0}%</li>
+          <li><b>Thời gian hẹn gặp (bàn giao xe / pin thực tế):</b> ${
+            contract.appointmentTime
+              ? new Date(contract.appointmentTime).toLocaleString()
+              : "Chưa có"
+          }</li>
+          <li><b>Địa điểm hẹn:</b> ${contract.appointmentPlace ?? "Chưa có"}</li>
+        </ul>
+
+        <h3>Bên mua (Buyer)</h3>
+        <p>${buyer.username} &lt;${buyer.email}&gt;</p>
+
+        <h3>Bên bán (Seller)</h3>
+        <p>${seller.username} &lt;${seller.email}&gt;</p>
+
+        <p>Đây là bản xác nhận hợp đồng đã hoàn tất. Vui lòng lưu lại email này để làm bằng chứng giao dịch.</p>
+
+        <p style="margin-top:24px;font-size:12px;color:#666">
+          Đây là email tự động từ hệ thống. Vui lòng không trả lời trực tiếp.
+        </p>
+      </div>
+    `;
+
+    // 7. Gửi mail cho Buyer
+    const mailToBuyer = new Mail()
+      .setTo(buyer.email)
+      .setSubject(`Hợp đồng #${contract.id} - Hoàn tất giao dịch (Bên mua)`)
+      .setHTML(summaryHtml);
+
+    // 8. Gửi mail cho Seller
+    const mailToSeller = new Mail()
+      .setTo(seller.email)
+      .setSubject(`Hợp đồng #${contract.id} - Hoàn tất giao dịch (Bên bán)`)
+      .setHTML(summaryHtml);
+
+    await Promise.all([mailToBuyer.send(), mailToSeller.send()]);
+
+    // 9. Cập nhật trạng thái sau khi gửi hợp đồng
+    contract.status = "completed";
+    await contract.save();
+
+    res.set("Cache-Control", "no-store");
+    return res.status(200).json({
+      message: "Final signed contract sent to buyer and seller. Contract marked as completed.",
+      nextStatus: contract.status,
+      contractId: contract.id,
+      sentTo: {
+        buyerEmail: buyer.email,
+        sellerEmail: seller.email,
+      },
+    });
+  } catch (err) {
+    console.error("[contracts/send-final] error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
