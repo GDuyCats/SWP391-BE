@@ -95,7 +95,7 @@ export const createContractModel = (sequelize) => {
       notes: { type: DataTypes.TEXT, allowNull: true },
     },
     {
-      tableName: "contracts",
+      tableName: "Contracts",
       indexes: [
         { fields: ["postId"] },
         { fields: ["buyerId"] },
