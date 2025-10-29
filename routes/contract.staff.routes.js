@@ -1,4 +1,3 @@
-// routes/contract.staff.routes.js
 import { Router } from "express";
 import authenticateToken from "../middleware/authenticateToken.js";
 import { recordAppointment, finalizeNegotiation, listStaffContracts } from "../controller/contract.controller.js";
@@ -174,22 +173,89 @@ const router = Router();
  *               $ref: '#/components/schemas/Error'
  */
 
-// Staff ghi nhận lịch hẹn
-router.post("/appointment", authenticateToken,isStaff, recordAppointment);
-router.post("/finalize", authenticateToken,isStaff, finalizeNegotiation);
 /**
- * @openapi
- * /staff/contracts/AllContracts
+ * @swagger
+ * /staff/contracts/allContracts:
  *   get:
  *     summary: Staff xem các contract đã được assign
+ *     description: >
+ *       Trả về danh sách các hợp đồng mà staff hiện tại (hoặc admin) đang phụ trách.
  *     tags: [Contracts - Staff]
  *     security:
  *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Danh sách hợp đồng của staff
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 staffId:
+ *                   type: integer
+ *                   example: 5
+ *                 total:
+ *                   type: integer
+ *                   example: 2
+ *                 contracts:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Contract'
+ *             examples:
+ *               ok:
+ *                 summary: Ví dụ trả về
+ *                 value:
+ *                   staffId: 5
+ *                   total: 2
+ *                   contracts:
+ *                     - id: 12
+ *                       buyerId: 8
+ *                       sellerId: 4
+ *                       staffId: 5
+ *                       status: "negotiating"
+ *                       updatedAt: "2025-10-16T13:22:00Z"
+ *                     - id: 15
+ *                       buyerId: 11
+ *                       sellerId: 9
+ *                       staffId: 5
+ *                       status: "meeting_scheduled"
+ *                       updatedAt: "2025-10-17T10:00:00Z"
+ *       401:
+ *         description: Thiếu token / token không hợp lệ
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *             example:
+ *               message: "Unauthorized"
+ *       403:
+ *         description: Chỉ staff hoặc admin mới được xem danh sách này
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *             example:
+ *               message: "Only staff or admin can view assigned contracts."
+ *       500:
+ *         description: Lỗi máy chủ
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
+
+// Staff ghi nhận lịch hẹn
+router.post("/appointment", authenticateToken, isStaff, recordAppointment);
+
+// Staff chốt thương lượng
+router.post("/finalize", authenticateToken, isStaff, finalizeNegotiation);
+
+// Staff xem danh sách hợp đồng được assign
 router.get(
   "/allContracts",
   authenticateToken,
-  isStaff,           // chỉ staff mới gọi được
+  isStaff, // chỉ staff mới gọi được
   listStaffContracts
 );
+
 export default router;
