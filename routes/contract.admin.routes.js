@@ -1,6 +1,12 @@
 /**
  * @swagger
  * components:
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ *
  *   schemas:
  *     Contract:
  *       type: object
@@ -52,6 +58,7 @@ import { assignStaffToContract, listAllContractsForAdmin } from "../controller/c
 import isAdmin from "../middleware/isAdmin.js";
 
 const router = Router();
+
 /**
  * @swagger
  * /admin/contracts/assign-staff:
@@ -153,21 +160,57 @@ const router = Router();
  */
 
 // Admin gán staff cho hợp đồng
-router.post("/assign-staff" , authenticateToken, isAdmin, assignStaffToContract);
+router.post("/assign-staff", authenticateToken, isAdmin, assignStaffToContract);
 
 /**
- * @openapi
+ * @swagger
  * /admin/contracts/allContract:
  *   get:
  *     summary: Admin xem toàn bộ contract
  *     tags: [Contracts]
  *     security:
  *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 viewerRole:
+ *                   type: string
+ *                   example: "admin"
+ *                 total:
+ *                   type: integer
+ *                   example: 0
+ *                 contracts:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Contract'
+ *       401:
+ *         description: Unauthorized (chưa đăng nhập hoặc token hỏng)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden (không phải admin)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Lỗi server
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get(
   "/allContract",
   authenticateToken,
-  isAdmin,           // chỉ admin mới gọi được
+  isAdmin, // chỉ admin mới gọi được
   listAllContractsForAdmin
 );
 
