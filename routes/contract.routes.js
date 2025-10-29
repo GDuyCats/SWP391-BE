@@ -1,9 +1,10 @@
 import { Router } from "express";
 import authenticateToken from "../middleware/authenticateToken.js";
-import { createPurchaseRequest } from "../controller/contract.controller.js";
+import { createPurchaseRequest, listSellerContracts } from "../controller/contract.controller.js";
 import isCustomer from "../middleware/isCustomer.js";
 
 const router = Router();
+
 /**
  * @swagger
  * /contracts/request:
@@ -87,6 +88,87 @@ const router = Router();
  */
 
 // Buyer gửi yêu cầu mua
-router.post("/request",authenticateToken ,isCustomer , createPurchaseRequest);
+router.post("/request", authenticateToken, isCustomer, createPurchaseRequest);
+
+
+/**
+ * @swagger
+ * /contracts/seller:
+ *   get:
+ *     summary: Seller xem các contract của mình (mình là sellerId)
+ *     description: >
+ *       Lấy danh sách tất cả hợp đồng mà user hiện tại đang là **seller** (tức là bài đăng thuộc về mình).  
+ *       Chỉ cho phép **customer** gọi. Admin/staff không được dùng route này.
+ *     tags: [Contracts]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Danh sách hợp đồng mà user hiện tại là seller
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sellerId:
+ *                   type: integer
+ *                   example: 42
+ *                 total:
+ *                   type: integer
+ *                   example: 3
+ *                 contracts:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Contract'
+ *             examples:
+ *               ok:
+ *                 summary: Ví dụ trả về
+ *                 value:
+ *                   sellerId: 42
+ *                   total: 2
+ *                   contracts:
+ *                     - id: 101
+ *                       buyerId: 88
+ *                       sellerId: 42
+ *                       staffId: 5
+ *                       status: "negotiating"
+ *                       updatedAt: "2025-10-29T09:15:00Z"
+ *                     - id: 102
+ *                       buyerId: 90
+ *                       sellerId: 42
+ *                       staffId: 5
+ *                       status: "pending"
+ *                       updatedAt: "2025-10-29T10:40:00Z"
+ *       401:
+ *         description: Thiếu token hoặc token không hợp lệ
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *             example:
+ *               message: "Unauthorized"
+ *       403:
+ *         description: Không đủ quyền (chỉ customer mới được xem danh sách của mình)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *             example:
+ *               message: "Only customers can view their seller contracts."
+ *       500:
+ *         description: Lỗi máy chủ
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
+// Seller xem các hợp đồng mà mình là seller
+router.get(
+  "/seller",
+  authenticateToken,
+  isCustomer,        // chỉ customer mới gọi được
+  listSellerContracts
+);
 
 export default router;
