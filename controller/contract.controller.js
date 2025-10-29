@@ -457,3 +457,184 @@ export const verifyContractOtp = async (req, res) => {
   }
 };
 
+export const listSellerContracts = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user?.id) {
+      return res.status(401).json({ message: "Missing auth payload" });
+    }
+
+    const contracts = await ContractModel.findAll({
+      where: { sellerId: user.id },
+      order: [["createdAt", "DESC"]],
+      include: [
+        {
+          model: PostModel,
+          attributes: ["id", "title", "category", "price", "userId"],
+        },
+        {
+          model: UserModel,
+          as: "buyer",
+          attributes: ["id", "username", "email"],
+        },
+        {
+          model: UserModel,
+          as: "staff",
+          attributes: ["id", "username", "email"],
+        },
+      ],
+    });
+
+    const sanitized = contracts.map((c) => {
+      const data = c.toJSON();
+
+      // Không trả OTP trong list
+      delete data.buyerOtp;
+      delete data.sellerOtp;
+
+      // Người bán chỉ cần biết phí của người bán
+      delete data.buyerFeePercent;
+
+      data.sellerFeeAmount =
+        data.agreedPrice && data.sellerFeePercent != null
+          ? Math.round((data.agreedPrice * data.sellerFeePercent) / 100)
+          : null;
+
+      return data;
+    });
+
+    res.set("Cache-Control", "no-store");
+    return res.status(200).json({
+      viewerRole: "seller",
+      total: sanitized.length,
+      contracts: sanitized,
+    });
+  } catch (err) {
+    console.error("[contracts/listSellerContracts] error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const listStaffContracts = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user?.id) {
+      return res.status(401).json({ message: "Missing auth payload" });
+    }
+
+    const contracts = await ContractModel.findAll({
+      where: { staffId: user.id },
+      order: [["createdAt", "DESC"]],
+      include: [
+        {
+          model: PostModel,
+          attributes: ["id", "title", "category", "price"],
+        },
+        {
+          model: UserModel,
+          as: "buyer",
+          attributes: ["id", "username", "email"],
+        },
+        {
+          model: UserModel,
+          as: "seller",
+          attributes: ["id", "username", "email"],
+        },
+      ],
+    });
+
+    const sanitized = contracts.map((c) => {
+      const data = c.toJSON();
+
+      delete data.buyerOtp;
+      delete data.sellerOtp;
+
+      // Staff cần thấy breakdown phí để tư vấn
+      data.buyerFeeAmount =
+        data.agreedPrice && data.buyerFeePercent != null
+          ? Math.round((data.agreedPrice * data.buyerFeePercent) / 100)
+          : null;
+
+      data.sellerFeeAmount =
+        data.agreedPrice && data.sellerFeePercent != null
+          ? Math.round((data.agreedPrice * data.sellerFeePercent) / 100)
+          : null;
+
+      return data;
+    });
+
+    res.set("Cache-Control", "no-store");
+    return res.status(200).json({
+      viewerRole: "staff",
+      total: sanitized.length,
+      contracts: sanitized,
+    });
+  } catch (err) {
+    console.error("[contracts/listStaffContracts] error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const listAllContractsForAdmin = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user?.id) {
+      return res.status(401).json({ message: "Missing auth payload" });
+    }
+
+    const contracts = await ContractModel.findAll({
+      order: [["createdAt", "DESC"]],
+      include: [
+        {
+          model: PostModel,
+          attributes: ["id", "title", "category", "price"],
+        },
+        {
+          model: UserModel,
+          as: "buyer",
+          attributes: ["id", "username", "email"],
+        },
+        {
+          model: UserModel,
+          as: "seller",
+          attributes: ["id", "username", "email"],
+        },
+        {
+          model: UserModel,
+          as: "staff",
+          attributes: ["id", "username", "email"],
+        },
+      ],
+    });
+
+    const sanitized = contracts.map((c) => {
+      const data = c.toJSON();
+
+      // Admin coi list thì không cần OTP code
+      delete data.buyerOtp;
+      delete data.sellerOtp;
+
+      data.buyerFeeAmount =
+        data.agreedPrice && data.buyerFeePercent != null
+          ? Math.round((data.agreedPrice * data.buyerFeePercent) / 100)
+          : null;
+
+      data.sellerFeeAmount =
+        data.agreedPrice && data.sellerFeePercent != null
+          ? Math.round((data.agreedPrice * data.sellerFeePercent) / 100)
+          : null;
+
+      return data;
+    });
+
+    res.set("Cache-Control", "no-store");
+    return res.status(200).json({
+      viewerRole: "admin",
+      total: sanitized.length,
+      contracts: sanitized,
+    });
+  } catch (err) {
+    console.error("[contracts/listAllContractsForAdmin] error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};

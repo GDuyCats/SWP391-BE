@@ -1,7 +1,7 @@
 // routes/contract.admin.routes.js
 import { Router } from "express";
 import authenticateToken from "../middleware/authenticateToken.js";
-import { assignStaffToContract } from "../controller/contract.controller.js";
+import { assignStaffToContract, listAllContractsForAdmin } from "../controller/contract.controller.js";
 import isAdmin from "../middleware/isAdmin.js";
 
 const router = Router();
@@ -107,5 +107,19 @@ const router = Router();
 
 // Admin gán staff cho hợp đồng
 router.post("/assign-staff" , authenticateToken,isAdmin, assignStaffToContract);
-
+/**
+ * @openapi
+ * /contracts/admin:
+ *   get:
+ *     summary: Admin xem toàn bộ contract
+ *     tags: [Contracts]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get(
+  "/admin",
+  authenticateToken,
+  isAdmin,           // chỉ admin mới gọi được
+  listAllContractsForAdmin
+);
 export default router;
