@@ -325,9 +325,9 @@ export const sendContractOtp = async (req, res) => {
       return res.status(403).json({ message: "Not allowed to send OTP for this contract" });
     }
 
-    if (contract.status !== "awaiting_sign") {
-      return res.status(400).json({ message: "Contract is not awaiting signatures" });
-    }
+    // if (contract.status !== "awaiting_sign") {
+    //   return res.status(400).json({ message: "Contract is not awaiting signatures" });
+    // }
 
     // ✅ Tạo OTP và thời hạn
     const buyerOtp = gen6();
