@@ -1,15 +1,7 @@
 // controller/user.post.controller.js
-import {
-  sequelize,
-  UserModel,
-  PostModel,
-  VipPlanModel,
-  BatteryDetailModel,
-  VehicleDetailModel,
-} from "../postgres/postgres.js";
-import { UTApi } from "uploadthing/server";
+import { sequelize, UserModel, PostModel, VipPlanModel, BatteryDetailModel, VehicleDetailModel } from "../postgres/postgres.js";
+import { UTApi } from "uploadthing/server"
 const utapi = new UTApi();
-
 const PHONE_REGEX = /^(?:\+84|0)(?:\d{9,10})$/;
 
 // === Helper ===
@@ -21,152 +13,14 @@ function normalizeImages(input) {
       return Array.isArray(maybe)
         ? maybe.map(String)
         : input.trim()
-        ? [input.trim()]
-        : [];
+          ? [input.trim()]
+          : [];
     } catch {
       return input.trim() ? [input.trim()] : [];
     }
   }
   return Array.isArray(input) ? input.map(String) : [];
 }
-
-// ===== Columns chọn trả về =====
-const BASE_POST_ATTRS = [
-  "id",
-  "userId",
-  "title",
-  "content",
-  "thumbnail",
-  "image",
-  "price",
-  "phone",
-  "category",
-  "isActive",
-  "isVip",
-  "vipTier",
-  "vipPriority",
-  "vipExpiresAt",
-  "verifyStatus",
-  "createdAt",
-  "updatedAt",
-];
-
-// KHÔNG đổi tên cột DB của bạn; chỉ liệt kê để include gọn
-const VEHICLE_ATTRS = [
-  "brand",
-  "model",
-  "year",
-  "mileage",
-  "condition",
-  "battery_brand",
-  "battery_model",
-  "battery_capacity",
-  "battery_type",
-  "battery_range",
-  "battery_condition",
-  "charging_time",
-];
-
-const BATTERY_ATTRS = [
-  "battery_brand",
-  "battery_model",
-  "battery_capacity",
-  "battery_type",
-  "battery_condition",
-  "compatible_models",
-  "charging_time",
-];
-
-// Chuyển chuỗi JSON/CSV thành mảng
-const parseCompat = (v) => {
-  if (!v) return [];
-  try {
-    if (Array.isArray(v)) return v;
-    return JSON.parse(v);
-  } catch {
-    return String(v)
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }
-};
-
-// Gộp Post + Detail thành payload "đủ thông số"
-const serializePost = (p) => {
-  const base = {
-    id: p.id,
-    userId: p.userId,
-    title: p.title,
-    content: p.content,
-    thumbnail: p.thumbnail,
-    image: p.image,
-    price: p.price,
-    phone: p.phone,
-    category: p.category,
-    isActive: p.isActive,
-    isVip: p.isVip,
-    vipTier: p.vipTier,
-    vipPriority: p.vipPriority,
-    vipExpiresAt: p.vipExpiresAt,
-    verifyStatus: p.verifyStatus,
-    createdAt: p.createdAt,
-    updatedAt: p.updatedAt,
-  };
-
-  // Vehicle post
-  if (p.category === "vehicle" && p.VehicleDetail) {
-    const v = p.VehicleDetail;
-    const hasBattery =
-      !!(v.battery_brand ||
-      v.battery_model ||
-      v.battery_capacity ||
-      v.battery_type);
-
-    return {
-      ...base,
-      specs: {
-        category: "vehicle",
-        hasBattery,
-        brand: v.brand,
-        model: v.model,
-        year: v.year,
-        mileage: v.mileage,
-        condition: v.condition,
-        battery: hasBattery
-          ? {
-              brand: v.battery_brand,
-              model: v.battery_model,
-              capacity: v.battery_capacity,
-              type: v.battery_type,
-              range: v.battery_range,
-              condition: v.battery_condition,
-              charging_time: v.charging_time,
-            }
-          : null,
-      },
-    };
-  }
-
-  // Battery post
-  if (p.category === "battery" && p.BatteryDetail) {
-    const b = p.BatteryDetail;
-    return {
-      ...base,
-      specs: {
-        category: "battery",
-        brand: b.battery_brand,
-        model: b.battery_model,
-        capacity: b.battery_capacity,
-        type: b.battery_type,
-        condition: b.battery_condition,
-        charging_time: b.charging_time,
-        compatible_models: parseCompat(b.compatible_models),
-      },
-    };
-  }
-
-  return { ...base, specs: null };
-};
 
 // ======================================================
 // CREATE POST (chỉ tạo; CHƯA hiển thị, CHƯA VIP)
@@ -178,35 +32,16 @@ export const createMyPost = async (req, res) => {
     if (!userId) return res.status(401).json({ message: "Chưa đăng nhập" });
 
     const {
-      title,
-      content,
-      thumbnail,
-      image,
-      price,
-      phone,
-      category,
+      title, content, thumbnail, image, price, phone, category,
       // vehicle:
-      hasBattery,
-      brand,
-      model,
-      year,
-      mileage,
-      condition,
+      hasBattery, brand, model, year, mileage, condition,
       // battery (và vehicle nếu hasBattery=true):
-      battery_brand,
-      battery_model,
-      battery_capacity,
-      battery_type,
-      battery_range,
-      battery_condition,
-      charging_time,
-      compatible_models,
+      battery_brand, battery_model, battery_capacity, battery_type,
+      battery_range, battery_condition, charging_time, compatible_models,
     } = req.body ?? {};
 
-    if (!title?.trim())
-      return res.status(400).json({ message: "title là bắt buộc" });
-    if (!content?.trim())
-      return res.status(400).json({ message: "content là bắt buộc" });
+    if (!title?.trim()) return res.status(400).json({ message: "title là bắt buộc" });
+    if (!content?.trim()) return res.status(400).json({ message: "content là bắt buộc" });
 
     // ==== Upload file nếu có ====
     let thumbnailUrl = thumbnail ? String(thumbnail).trim() : null;
@@ -215,39 +50,28 @@ export const createMyPost = async (req, res) => {
     // Upload thumbnailFile (1 ảnh)
     const thFile = req.files?.thumbnailFile?.[0];
     if (thFile) {
-      const f = new File([thFile.buffer], thFile.originalname, {
-        type: thFile.mimetype,
-      });
+      const f = new File([thFile.buffer], thFile.originalname, { type: thFile.mimetype });
       const r = await utapi.uploadFiles(f);
       const item = Array.isArray(r) ? r[0] : r;
-      if (item?.error)
-        throw new Error(item.error.message || "Upload thumbnail failed");
+      if (item?.error) throw new Error(item.error.message || "Upload thumbnail failed");
       thumbnailUrl = item.data?.url ?? null;
     }
 
     // Upload imageFiles (nhiều ảnh)
     const galFiles = req.files?.imageFiles || [];
     if (galFiles.length) {
-      const fs = galFiles.map(
-        (x) => new File([x.buffer], x.originalname, { type: x.mimetype })
-      );
+      const fs = galFiles.map((x) => new File([x.buffer], x.originalname, { type: x.mimetype }));
       const outs = await utapi.uploadFiles(fs);
-      const urls = outs
-        .filter((o) => !o.error && o.data?.url)
-        .map((o) => o.data.url);
+      const urls = outs.filter(o => !o.error && o.data?.url).map(o => o.data.url);
       images = [...images, ...urls];
     }
 
     // ✅ BẮT BUỘC CÓ ẢNH
     if (!thumbnailUrl || !String(thumbnailUrl).trim()) {
-      return res
-        .status(400)
-        .json({ message: "Bắt buộc phải có ảnh thumbnail" });
+      return res.status(400).json({ message: "Bắt buộc phải có ảnh thumbnail" });
     }
     if (!Array.isArray(images) || images.length === 0) {
-      return res.status(400).json({
-        message: "Bắt buộc phải có ít nhất 1 ảnh trong danh sách image",
-      });
+      return res.status(400).json({ message: "Bắt buộc phải có ít nhất 1 ảnh trong danh sách image" });
     }
 
     // ==== Validate các field khác ====
@@ -256,34 +80,39 @@ export const createMyPost = async (req, res) => {
       return res.status(400).json({ message: "price phải là số >= 0" });
 
     if (phone && !PHONE_REGEX.test(String(phone)))
-      return res
-        .status(400)
-        .json({ message: "Số điện thoại không hợp lệ (VN)" });
+      return res.status(400).json({ message: "Số điện thoại không hợp lệ (VN)" });
+
+    let planIdToSave = null;
+    // if (vipPlanId != null) {
+    //   const plan = await VipPlanModel.findOne({ where: { id: vipPlanId, active: true } });
+    //   if (!plan)
+    //     return res.status(404).json({ message: "Gói VIP không tồn tại hoặc đã bị tắt" });
+    //   planIdToSave = plan.id;
+    // }
 
     const finalCategory = ["battery", "vehicle"].includes(category)
       ? category
       : "vehicle";
 
-    // Validate category logic
+    // Validate category logic cũ
     if (finalCategory === "vehicle") {
       if (!brand?.trim() || !model?.trim())
-        return res
-          .status(400)
-          .json({ message: "Xe điện cần có brand và model" });
+        return res.status(400).json({ message: "Xe điện cần có brand và model" });
 
       const hb = hasBattery !== false; // mặc định true nếu không gửi
       if (hb) {
         const missingFields = [];
         if (!battery_brand?.trim()) missingFields.push("battery_brand");
         if (!battery_model?.trim()) missingFields.push("battery_model");
-        if (battery_capacity == null || Number.isNaN(Number(battery_capacity)))
+        if (
+          battery_capacity == null ||
+          Number.isNaN(Number(battery_capacity))
+        )
           missingFields.push("battery_capacity");
 
         if (missingFields.length)
           return res.status(400).json({
-            message: `Xe kèm pin thiếu thông tin bắt buộc: ${missingFields.join(
-              ", "
-            )}`,
+            message: `Xe kèm pin thiếu thông tin bắt buộc: ${missingFields.join(", ")}`,
             hint:
               "Vui lòng nhập đầy đủ thông tin pin hoặc đặt hasBattery=false nếu xe thuê pin.",
           });
@@ -351,29 +180,16 @@ export const createMyPost = async (req, res) => {
           battery_type: battery_type ?? null,
           battery_condition: battery_condition ?? null,
           compatible_models: compatible_models ?? null,
-          charging_time: charging_time != null ? Number(charging_time) : null,
         },
         { transaction: tx }
       );
     }
 
-    // Commit trước rồi refetch kèm include để trả đủ thông tin
     await tx.commit();
-
-    const created = await PostModel.findByPk(post.id, {
-      attributes: BASE_POST_ATTRS,
-      include: [
-        { model: VehicleDetailModel, attributes: VEHICLE_ATTRS },
-        { model: BatteryDetailModel, attributes: BATTERY_ATTRS },
-      ],
-    });
-
-    const payload = serializePost(created.toJSON());
-
     return res.status(201).json({
       message:
         "Tạo bài thành công (chưa hiển thị). Vui lòng chọn gói & thanh toán để hiển thị.",
-      data: payload,
+      data: post,
     });
   } catch (err) {
     await tx.rollback();
@@ -397,38 +213,14 @@ export const updateMyPost = async (req, res) => {
     const post = await PostModel.findByPk(id, { transaction: tx });
     if (!post) return res.status(404).json({ message: "Không tìm thấy post" });
     if (post.userId !== userId)
-      return res
-        .status(403)
-        .json({ message: "Bạn không có quyền sửa post này" });
+      return res.status(403).json({ message: "Bạn không có quyền sửa post này" });
 
     const {
-      title,
-      content,
-      thumbnail,
-      image,
-      price,
-      phone,
-      category,
-      verifyStatus,
-      hasBattery,
-      brand,
-      model,
-      year,
-      mileage,
-      condition,
-      battery_brand,
-      battery_model,
-      battery_capacity,
-      battery_type,
-      battery_range,
-      battery_condition,
-      charging_time,
-      compatible_models,
-      isActive,
-      isVip,
-      vipTier,
-      vipPriority,
-      vipExpiresAt,
+      title, content, thumbnail, image, price, phone, category, verifyStatus,
+      hasBattery, brand, model, year, mileage, condition,
+      battery_brand, battery_model, battery_capacity, battery_type,
+      battery_range, battery_condition, charging_time, compatible_models,
+      isActive, isVip, vipTier, vipPriority, vipExpiresAt,
     } = req.body ?? {};
 
     // ===== Upload file nếu có =====
@@ -437,45 +229,32 @@ export const updateMyPost = async (req, res) => {
 
     const thFileU = req.files?.thumbnailFile?.[0];
     if (thFileU) {
-      const f = new File([thFileU.buffer], thFileU.originalname, {
-        type: thFileU.mimetype,
-      });
+      const f = new File([thFileU.buffer], thFileU.originalname, { type: thFileU.mimetype });
       const r = await utapi.uploadFiles(f);
       const item = Array.isArray(r) ? r[0] : r;
-      if (item?.error)
-        throw new Error(item.error.message || "Upload thumbnail failed");
+      if (item?.error) throw new Error(item.error.message || "Upload thumbnail failed");
       newThumb = item.data?.url ?? null;
     }
 
     const galFilesU = req.files?.imageFiles || [];
     if (galFilesU.length) {
-      const fs = galFilesU.map(
-        (x) => new File([x.buffer], x.originalname, { type: x.mimetype })
-      );
+      const fs = galFilesU.map((x) => new File([x.buffer], x.originalname, { type: x.mimetype }));
       const outs = await utapi.uploadFiles(fs);
-      newImagesAppend = outs
-        .filter((o) => !o.error && o.data?.url)
-        .map((o) => o.data.url);
+      newImagesAppend = outs.filter(o => !o.error && o.data?.url).map(o => o.data.url);
     }
 
-    // ===== Bỏ qua VIP fields ở endpoint này =====
-    if (
-      [isActive, isVip, vipTier, vipPriority, vipExpiresAt].some(
-        (v) => v !== undefined
-      )
-    ) {
+    // ===== Bỏ qua VIP fields =====
+    if ([isActive, isVip, vipPlanId, vipTier, vipPriority, vipExpiresAt].some(v => v !== undefined)) {
       // noop
     }
 
     // ===== Cập nhật cơ bản =====
     if (title !== undefined) {
-      if (!String(title).trim())
-        return res.status(400).json({ message: "title không được rỗng" });
+      if (!String(title).trim()) return res.status(400).json({ message: "title không được rỗng" });
       post.title = String(title).trim();
     }
     if (content !== undefined) {
-      if (!String(content).trim())
-        return res.status(400).json({ message: "content không được rỗng" });
+      if (!String(content).trim()) return res.status(400).json({ message: "content không được rỗng" });
       post.content = String(content).trim();
     }
 
@@ -502,46 +281,37 @@ export const updateMyPost = async (req, res) => {
 
     if (phone !== undefined) {
       if (phone && !PHONE_REGEX.test(String(phone)))
-        return res
-          .status(400)
-          .json({ message: "Số điện thoại không hợp lệ (VN)" });
+        return res.status(400).json({ message: "Số điện thoại không hợp lệ (VN)" });
       post.phone = phone ? String(phone) : null;
     }
 
     if (category !== undefined) {
       if (!["battery", "vehicle"].includes(category))
-        return res
-          .status(400)
-          .json({ message: "category phải là 'battery' hoặc 'vehicle'" });
+        return res.status(400).json({ message: "category phải là 'battery' hoặc 'vehicle'" });
       post.category = category;
     }
 
-    // ✅ Check ảnh
-    const thumbToCheck = post.thumbnail;
-    const imagesToCheck = post.image;
+    // ✅ === CHECK BẮT BUỘC CÓ ẢNH ===
+    const thumbToCheck = newThumb ?? thumbnail ?? post.thumbnail;
+    const imagesToCheck = newImagesAppend.length
+      ? newImagesAppend
+      : (image ? normalizeImages(image) : post.image);
 
     if (!thumbToCheck || !String(thumbToCheck).trim()) {
-      return res
-        .status(400)
-        .json({ message: "Bắt buộc phải có ảnh thumbnail" });
+      return res.status(400).json({ message: "Bắt buộc phải có ảnh thumbnail" });
     }
+
     if (!Array.isArray(imagesToCheck) || imagesToCheck.length === 0) {
-      return res.status(400).json({
-        message: "Bắt buộc phải có ít nhất 1 ảnh trong danh sách image",
-      });
+      return res.status(400).json({ message: "Bắt buộc phải có ít nhất 1 ảnh trong danh sách image" });
     }
 
     // ===== verifyStatus: chỉ staff/admin =====
     if (verifyStatus !== undefined) {
       const role = req.user?.role;
       if (!["admin", "staff"].includes(role))
-        return res
-          .status(403)
-          .json({ message: "Chỉ staff/admin mới có thể thay đổi verifyStatus" });
+        return res.status(403).json({ message: "Chỉ staff/admin mới có thể thay đổi verifyStatus" });
       if (!["verify", "nonverify"].includes(verifyStatus))
-        return res
-          .status(400)
-          .json({ message: "verifyStatus phải là 'verify' hoặc 'nonverify'" });
+        return res.status(400).json({ message: "verifyStatus phải là 'verify' hoặc 'nonverify'" });
       post.verifyStatus = verifyStatus;
     }
 
@@ -549,15 +319,8 @@ export const updateMyPost = async (req, res) => {
     const currentCategory = post.category;
 
     if (currentCategory === "vehicle") {
-      let vd = await VehicleDetailModel.findOne({
-        where: { postId: post.id },
-        transaction: tx,
-      });
-      if (!vd)
-        vd = await VehicleDetailModel.create(
-          { postId: post.id },
-          { transaction: tx }
-        );
+      let vd = await VehicleDetailModel.findOne({ where: { postId: post.id }, transaction: tx });
+      if (!vd) vd = await VehicleDetailModel.create({ postId: post.id }, { transaction: tx });
 
       if (brand !== undefined) vd.brand = brand ?? null;
       if (model !== undefined) vd.model = model ?? null;
@@ -565,77 +328,39 @@ export const updateMyPost = async (req, res) => {
       if (mileage !== undefined) vd.mileage = mileage ? Number(mileage) : null;
       if (condition !== undefined) vd.condition = condition ?? null;
 
-      const hb = hasBattery !== undefined ? !!hasBattery : undefined;
+      const hb = hasBattery !== undefined ? hasBattery : undefined;
       const useBattery = hb === undefined ? true : hb;
       if (useBattery) {
         if (battery_brand !== undefined) vd.battery_brand = battery_brand ?? null;
         if (battery_model !== undefined) vd.battery_model = battery_model ?? null;
-        if (battery_capacity !== undefined)
-          vd.battery_capacity =
-            battery_capacity != null ? Number(battery_capacity) : null;
+        if (battery_capacity !== undefined) vd.battery_capacity = battery_capacity != null ? Number(battery_capacity) : null;
         if (battery_type !== undefined) vd.battery_type = battery_type ?? null;
-        if (battery_range !== undefined)
-          vd.battery_range =
-            battery_range != null ? Number(battery_range) : null;
-        if (battery_condition !== undefined)
-          vd.battery_condition = battery_condition ?? null;
-        if (charging_time !== undefined)
-          vd.charging_time =
-            charging_time != null ? Number(charging_time) : null;
+        if (battery_range !== undefined) vd.battery_range = battery_range != null ? Number(battery_range) : null;
+        if (battery_condition !== undefined) vd.battery_condition = battery_condition ?? null;
+        if (charging_time !== undefined) vd.charging_time = charging_time != null ? Number(charging_time) : null;
       } else {
-        vd.battery_brand =
-          vd.battery_model =
-          vd.battery_type =
-          vd.battery_condition =
-            null;
+        vd.battery_brand = vd.battery_model = vd.battery_type = vd.battery_condition = null;
         vd.battery_capacity = vd.battery_range = vd.charging_time = null;
       }
 
       await vd.save({ transaction: tx });
     } else {
-      let bd = await BatteryDetailModel.findOne({
-        where: { postId: post.id },
-        transaction: tx,
-      });
-      if (!bd)
-        bd = await BatteryDetailModel.create(
-          { postId: post.id },
-          { transaction: tx }
-        );
+      let bd = await BatteryDetailModel.findOne({ where: { postId: post.id }, transaction: tx });
+      if (!bd) bd = await BatteryDetailModel.create({ postId: post.id }, { transaction: tx });
 
       if (battery_brand !== undefined) bd.battery_brand = battery_brand ?? null;
       if (battery_model !== undefined) bd.battery_model = battery_model ?? null;
-      if (battery_capacity !== undefined)
-        bd.battery_capacity =
-          battery_capacity != null ? Number(battery_capacity) : null;
+      if (battery_capacity !== undefined) bd.battery_capacity = battery_capacity != null ? Number(battery_capacity) : null;
       if (battery_type !== undefined) bd.battery_type = battery_type ?? null;
-      if (battery_condition !== undefined)
-        bd.battery_condition = battery_condition ?? null;
-      if (compatible_models !== undefined)
-        bd.compatible_models = compatible_models ?? null;
-      if (charging_time !== undefined)
-        bd.charging_time =
-          charging_time != null ? Number(charging_time) : null;
+      if (battery_condition !== undefined) bd.battery_condition = battery_condition ?? null;
+      if (compatible_models !== undefined) bd.compatible_models = compatible_models ?? null;
 
       await bd.save({ transaction: tx });
     }
 
     await post.save({ transaction: tx });
     await tx.commit();
-
-    // Refetch + serialize để trả về đầy đủ
-    const updated = await PostModel.findByPk(post.id, {
-      attributes: BASE_POST_ATTRS,
-      include: [
-        { model: VehicleDetailModel, attributes: VEHICLE_ATTRS },
-        { model: BatteryDetailModel, attributes: BATTERY_ATTRS },
-      ],
-    });
-
-    return res.status(200).json({
-      message: "Cập nhật post thành công",
-      data: serializePost(updated.toJSON()),
-    });
+    return res.status(200).json({ message: "Cập nhật post thành công", data: post });
   } catch (err) {
     await tx.rollback();
     console.error("updateMyPost error:", err);
@@ -644,7 +369,7 @@ export const updateMyPost = async (req, res) => {
 };
 
 // ======================================================
-// DELETE POST -> chỉ ẩn (isActive=false), không xoá hẳn
+// DELETE POST
 // ======================================================
 export const deleteMyPost = async (req, res) => {
   try {
@@ -655,26 +380,15 @@ export const deleteMyPost = async (req, res) => {
     const post = await PostModel.findByPk(id);
     if (!post) return res.status(404).json({ message: "Không tìm thấy post" });
     if (post.userId !== userId)
-      return res
-        .status(403)
-        .json({ message: "Bạn không có quyền xoá post này" });
+      return res.status(403).json({ message: "Bạn không có quyền xoá post này" });
 
-    if (post.isActive === false) {
-      return res
-        .status(200)
-        .json({ message: "Post đã ở trạng thái ẩn (isActive=false)" });
-    }
-
-    post.isActive = false;
-    await post.save();
-
-    return res.status(200).json({ message: "Ẩn post thành công (isActive=false)" });
+    await post.destroy();
+    return res.status(200).json({ message: "Xoá post thành công" });
   } catch (err) {
     console.error("deleteMyPost error:", err);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
 // ======================================================
 // GET MY POSTS
 // ======================================================
@@ -684,27 +398,18 @@ export const getMyPosts = async (req, res) => {
     if (!userId) return res.status(401).json({ message: "Chưa đăng nhập" });
 
     const page = Math.max(parseInt(req.query.page ?? "1", 10), 1);
-    const pageSize = Math.min(
-      Math.max(parseInt(req.query.pageSize ?? "10", 10), 1),
-      50
-    );
+    const pageSize = Math.min(Math.max(parseInt(req.query.pageSize ?? "10", 10), 1), 50);
     const offset = (page - 1) * pageSize;
 
     const { rows, count } = await PostModel.findAndCountAll({
       where: { userId },
-      attributes: BASE_POST_ATTRS,
-      include: [
-        { model: UserModel, attributes: ["id", "username", "avatar"] },
-        { model: VehicleDetailModel, attributes: VEHICLE_ATTRS },
-        { model: BatteryDetailModel, attributes: BATTERY_ATTRS },
-      ],
+      include: [{ model: UserModel, attributes: ["id", "username", "avatar"] }],
       order: [["createdAt", "DESC"]],
       limit: pageSize,
       offset,
     });
 
-    const data = rows.map((r) => serializePost(r.toJSON()));
-    return res.json({ total: count, page, pageSize, data });
+    return res.json({ total: count, page, pageSize, data: rows });
   } catch (err) {
     console.error("getMyPosts error:", err);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -722,22 +427,14 @@ export const getUserPosts = async (req, res) => {
 
     const posts = await PostModel.findAll({
       where: { userId, verifyStatus: "verify", isActive: true },
-      attributes: BASE_POST_ATTRS,
-      include: [
-        { model: UserModel, attributes: ["id", "username", "avatar"] },
-        { model: VehicleDetailModel, attributes: VEHICLE_ATTRS },
-        { model: BatteryDetailModel, attributes: BATTERY_ATTRS },
-      ],
+      include: [{ model: UserModel, attributes: ["id", "username", "avatar"] }],
       order: [["createdAt", "DESC"]],
     });
 
     if (!posts?.length)
-      return res
-        .status(404)
-        .json({ message: "Người dùng này chưa có bài đăng nào" });
+      return res.status(404).json({ message: "Người dùng này chưa có bài đăng nào" });
 
-    const data = posts.map((p) => serializePost(p.toJSON()));
-    return res.json({ total: data.length, data });
+    return res.json({ total: posts.length, data: posts });
   } catch (err) {
     console.error("getUserPosts error:", err);
     return res.status(500).json({ message: "Internal Server Error" });
