@@ -6,21 +6,45 @@ const PHONE_REGEX = /^(?:\+84|0)(?:\d{9,10})$/;
 
 // === Helper ===
 function normalizeImages(input) {
-  if (!input) return [];
+  if (input == null) return [];
+
+  // String: thử JSON trước, không được thì thử CSV, cuối cùng là một giá trị đơn
   if (typeof input === "string") {
+    const s = input.trim();
+    if (!s) return [];
+
     try {
-      const maybe = JSON.parse(input);
-      return Array.isArray(maybe)
-        ? maybe.map(String)
-        : input.trim()
-          ? [input.trim()]
-          : [];
+      const maybe = JSON.parse(s);
+      if (Array.isArray(maybe)) {
+        return [...new Set(
+          maybe.map(v => String(v).trim()).filter(Boolean)
+        )];
+      }
+      // nếu parse ra không phải array => coi như giá trị đơn
+      return [s];
     } catch {
-      return input.trim() ? [input.trim()] : [];
+      // Không phải JSON: nếu có dấu phẩy => CSV
+      if (s.includes(",")) {
+        return [...new Set(
+          s.split(",").map(v => v.trim()).filter(Boolean)
+        )];
+      }
+      // Chuỗi đơn
+      return [s];
     }
   }
-  return Array.isArray(input) ? input.map(String) : [];
+
+  // Array: chuẩn hóa từng phần tử
+  if (Array.isArray(input)) {
+    return [...new Set(
+      input.map(v => String(v).trim()).filter(Boolean)
+    )];
+  }
+
+  // Các kiểu khác: bỏ qua (giữ hành vi cũ)
+  return [];
 }
+
 
 // ======================================================
 // CREATE POST (chỉ tạo; CHƯA hiển thị, CHƯA VIP)
