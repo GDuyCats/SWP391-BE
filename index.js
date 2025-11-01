@@ -93,7 +93,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 // Preflight
 app.options(/.*/, cors(corsOptions));
-
+// --- Swagger ---
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // --- Routes ---
 
 
@@ -113,8 +114,7 @@ app.use("/staff/contracts", contract_staff_routes);
 app.use("/me", contract_viewer_routes)
 app.use("/", contract_otp_routes);
 app.use("/PurchaseRequests", purchase_request_routes);
-// --- Swagger ---
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 
 // (Optional) CORS error to JSON instead of 500 HTML
 // put after routes so it only catches CORS errors coming from middleware
