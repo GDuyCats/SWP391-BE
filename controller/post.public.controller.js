@@ -1,6 +1,11 @@
 // controllers/post.public.controller.js
 import { Op, literal } from "sequelize";
-import { PostModel, UserModel } from "../postgres/postgres.js";
+import {
+  PostModel,
+  UserModel,
+  VehicleDetailModel,
+  BatteryDetailModel,
+} from "../postgres/postgres.js";
 
 const VALID_CATEGORIES = ["battery", "vehicle"];
 const VALID_VIP_TIERS = ["diamond", "gold", "silver"];
@@ -18,7 +23,7 @@ export const listAdvancedPublicPosts = async (req, res) => {
       pageSize = "10",
       category,
 
-      // 🔥 NEW: VIP filters
+      // VIP filters
       vipTier,
       vipPriority,
       vipPriorityMin,
@@ -58,8 +63,7 @@ export const listAdvancedPublicPosts = async (req, res) => {
       if (dateTo) where.createdAt[Op.lte] = new Date(`${dateTo}T23:59:59Z`);
     }
 
-    // ===== 🔥 VIP filters (mới) =====
-    // 1) vipTier = diamond | gold | silver
+    // ===== VIP filters =====
     if (vipTier !== undefined) {
       const tier = String(vipTier).toLowerCase().trim();
       if (!VALID_VIP_TIERS.includes(tier)) {
@@ -71,7 +75,6 @@ export const listAdvancedPublicPosts = async (req, res) => {
       where.vipTier = tier;
     }
 
-    // 2) vipPriority (bằng)
     if (vipPriority !== undefined) {
       const n = Number(vipPriority);
       if (Number.isNaN(n) || n < 0) {
@@ -79,7 +82,6 @@ export const listAdvancedPublicPosts = async (req, res) => {
       }
       where.vipPriority = n;
     } else if (vipPriorityMin !== undefined) {
-      // 3) vipPriorityMin (>=)
       const m = Number(vipPriorityMin);
       if (Number.isNaN(m) || m < 0) {
         return res.status(400).json({ message: "vipPriorityMin must be a number >= 0" });
@@ -111,23 +113,181 @@ export const listAdvancedPublicPosts = async (req, res) => {
         break;
     }
 
-    // ===== query =====
+    // ===== query (include vehicleDetail + user) =====
     const { rows, count } = await PostModel.findAndCountAll({
       where,
-      include: [{ model: UserModel, attributes: ["id", "username", "avatar"] }],
+      include: [
+        { model: UserModel, attributes: ["id", "username", "avatar"] },
+        {
+          model: VehicleDetailModel,
+          as: "vehicleDetail",           // <-- alias phải khớp associations
+          required: false,
+          attributes: [
+            "brand","model","year","mileage","condition",
+            "battery_brand","battery_model","battery_capacity",
+            "battery_type","battery_range","battery_condition","charging_time",
+          ],
+        },
+      ],
       order,
       limit: sizeNum,
       offset,
+    });
+
+    // ===== map/flatten dữ liệu như detail =====
+    const data = rows.map((row) => {
+      const p = row.get({ plain: true });
+      const v = p.vehicleDetail ?? null;
+
+      const images = Array.isArray(p.image)
+        ? p.image
+        : Array.isArray(p.images)
+        ? p.images
+        : [];
+
+      return {
+        id: p.id,
+        title: p.title,
+        content: p.content,
+        price: p.price,
+        phone: p.phone ?? null,
+        category: p.category,
+        image: images,
+        thumbnail: p.thumbnail ?? null,
+
+        isVip: p.isVip ?? false,
+        vipTier: p.vipTier ?? null,
+        vipPriority: p.vipPriority ?? 0,
+        vipExpiresAt: p.vipExpiresAt ?? null,
+
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+
+        User: p.User
+          ? { id: p.User.id, username: p.User.username, avatar: p.User.avatar ?? null }
+          : null,
+
+        // Vehicle + battery info (từ VehicleDetails)
+        brand: v?.brand ?? null,
+        model: v?.model ?? null,
+        year: v?.year ?? null,
+        mileage: v?.mileage ?? null,
+        condition: v?.condition ?? null,
+        battery_brand: v?.battery_brand ?? null,
+        battery_model: v?.battery_model ?? null,
+        battery_capacity: v?.battery_capacity ?? null,
+        battery_type: v?.battery_type ?? null,
+        battery_range: v?.battery_range ?? null,
+        battery_condition: v?.battery_condition ?? null,
+        charging_time: v?.charging_time ?? null,
+      };
     });
 
     return res.json({
       total: count,
       page: pageNum,
       pageSize: sizeNum,
-      data: rows,
+      data,
     });
   } catch (err) {
     console.error("listAdvancedPublicPosts error:", err);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const getPostDetail = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ message: "Invalid post id" });
+    }
+    const [vCount] = await VehicleDetailModel.sequelize.query(
+      'SELECT COUNT(*) FROM "VehicleDetails" WHERE "postId" = :id',
+      { replacements: { id }, type: VehicleDetailModel.sequelize.QueryTypes.SELECT }
+    );
+    console.log("VehicleDetails rows for this postId:", vCount.count);
+    const post = await PostModel.findOne({
+      where: { id, isActive: true },
+      include: [
+        {
+          model: UserModel,
+          attributes: ["id", "username", "avatar"],
+        },
+        {
+          model: VehicleDetailModel,
+          as: "vehicleDetail",
+          required: false,
+          attributes: [
+            "brand",
+            "model",
+            "year",
+            "mileage",
+            "condition",
+            "battery_brand",
+            "battery_model",
+            "battery_capacity",
+            "battery_type",
+            "battery_range",
+            "battery_condition",
+            "charging_time",
+          ],
+        },
+      ],
+    });
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found or inactive" });
+    }
+
+    const p = post.get({ plain: true });
+    const v = p.vehicleDetail || null;
+
+    const images = Array.isArray(p.image)
+      ? p.image
+      : Array.isArray(p.images)
+        ? p.images
+        : [];
+
+    return res.json({
+      id: p.id,
+      title: p.title,
+      content: p.content,
+      price: p.price,
+      phone: p.phone ?? null,
+      category: p.category,
+      image: Array.isArray(p.image) ? p.image : Array.isArray(p.images) ? p.images : [],
+      thumbnail: p.thumbnail ?? null,
+      isVip: p.isVip ?? false,
+      vipTier: p.vipTier ?? null,
+      vipPriority: p.vipPriority ?? 0,
+      vipExpiresAt: p.vipExpiresAt ?? null,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+
+      User: p.User
+        ? {
+          id: p.User.id,
+          username: p.User.username,
+          avatar: p.User.avatar ?? null,
+        }
+        : null,
+
+      // VehicleDetail (bao gồm thông tin battery)
+      brand: v?.brand ?? null,
+      model: v?.model ?? null,
+      year: v?.year ?? null,
+      mileage: v?.mileage ?? null,
+      condition: v?.condition ?? null,
+      battery_brand: v?.battery_brand ?? null,
+      battery_model: v?.battery_model ?? null,
+      battery_capacity: v?.battery_capacity ?? null,
+      battery_type: v?.battery_type ?? null,
+      battery_range: v?.battery_range ?? null,
+      battery_condition: v?.battery_condition ?? null,
+      charging_time: v?.charging_time ?? null,
+    });
+  } catch (err) {
+    console.error("getPostDetail error:", err);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };

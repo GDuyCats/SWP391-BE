@@ -1,5 +1,6 @@
+// routes/post.public.route.js
 import { Router } from "express";
-import { listAdvancedPublicPosts } from "../controller/post.public.controller.js";
+import { listAdvancedPublicPosts, getPostDetail } from "../controller/post.public.controller.js";
 
 const router = Router();
 
@@ -18,68 +19,56 @@ const router = Router();
  *         name: q
  *         schema: { type: string }
  *         description: Keyword to search in title and content (case-insensitive)
- *
  *       - in: query
  *         name: category
  *         schema:
  *           type: string
  *           enum: [battery, vehicle]
  *         description: Filter by category
- *
  *       - in: query
  *         name: minPrice
  *         schema: { type: number, format: float, minimum: 0 }
  *         description: Minimum price
- *
  *       - in: query
  *         name: maxPrice
  *         schema: { type: number, format: float, minimum: 0 }
  *         description: Maximum price
- *
  *       - in: query
  *         name: dateFrom
  *         schema: { type: string, format: date }
  *         description: Start date (YYYY-MM-DD)
- *
  *       - in: query
  *         name: dateTo
  *         schema: { type: string, format: date }
  *         description: End date (YYYY-MM-DD)
- *
  *       - in: query
  *         name: vipPriority
  *         schema: { type: integer, minimum: 0 }
  *         description: Filter by exact VIP priority
- *
  *       - in: query
  *         name: vipPriorityMin
  *         schema: { type: integer, minimum: 0 }
  *         description: Filter posts with VIP priority >= this value
- *
  *       - in: query
  *         name: vipTier
  *         schema:
  *           type: string
  *           enum: [diamond, gold, silver]
  *         description: Filter by VIP tier (alternative to vipPriority)
- *
  *       - in: query
  *         name: sort
  *         schema:
  *           type: string
  *           enum: [vip_newest, vip_oldest, price_asc, price_desc]
  *         description: Sort order (VIP prioritized first)
- *
  *       - in: query
  *         name: page
  *         schema: { type: integer, minimum: 1 }
  *         description: Current page number
- *
  *       - in: query
  *         name: pageSize
  *         schema: { type: integer, minimum: 1, maximum: 50 }
  *         description: Number of posts per page
- *
  *     responses:
  *       200:
  *         description: List of active posts
@@ -103,19 +92,63 @@ const router = Router();
 
 /**
  * @openapi
+ * /{id}:
+ *   get:
+ *     tags:
+ *       - Posts (Public Search)
+ *     summary: Get public post detail by ID (merge VehicleDetail & BatteryDetail)
+ *     description: |
+ *       Trả chi tiết một bài đăng **active** (isActive=true), gộp các trường từ VehicleDetail và BatteryDetail
+ *       vào cùng một object, đúng theo UI bạn yêu cầu.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *         description: Post ID
+ *     responses:
+ *       200:
+ *         description: Public post detail
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PostDetailResponse'
+ *       400:
+ *         description: Invalid post id
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Message'
+ *       404:
+ *         description: Post not found or inactive
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Message'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Message'
+ */
+
+/**
+ * @openapi
  * components:
  *   schemas:
  *     Message:
  *       type: object
  *       properties:
- *         message:
- *           type: string
+ *         message: { type: string }
+ *
  *     UserPublic:
  *       type: object
  *       properties:
  *         id: { type: integer }
  *         username: { type: string }
  *         avatar: { type: string, nullable: true }
+ *
  *     PostPublic:
  *       type: object
  *       properties:
@@ -142,17 +175,36 @@ const router = Router();
  *         updatedAt: { type: string, format: date-time }
  *         User:
  *           $ref: '#/components/schemas/UserPublic'
- *     PostListResponse:
- *       type: object
- *       properties:
- *         total: { type: integer }
- *         page: { type: integer }
- *         pageSize: { type: integer }
- *         data:
- *           type: array
- *           items:
- *             $ref: '#/components/schemas/PostPublic'
+ *
+ *     PostDetailResponse:
+ *       allOf:
+ *         - $ref: '#/components/schemas/PostPublic'
+ *         - type: object
+ *           properties:
+ *             // Vehicle
+ *             hasBattery: { type: boolean, nullable: true }
+ *             brand: { type: string, nullable: true }
+ *             model: { type: string, nullable: true }
+ *             year: { type: number, nullable: true }
+ *             mileage: { type: number, nullable: true }
+ *             condition: { type: string, nullable: true }
+ *             // Battery
+ *             battery_brand: { type: string, nullable: true }
+ *             battery_model: { type: string, nullable: true }
+ *             battery_capacity: { type: number, nullable: true }
+ *             battery_type: { type: string, nullable: true }
+ *             battery_range: { type: number, nullable: true }
+ *             battery_condition: { type: string, nullable: true }
+ *             charging_time: { type: number, nullable: true }
+ *             compatible_models:
+ *               oneOf:
+ *                 - type: array
+ *                   items: { type: string }
+ *                 - type: string
+ *                 - type: "null"
  */
 
 router.get("/", listAdvancedPublicPosts);
+router.get("/:id", getPostDetail);
+
 export default router;

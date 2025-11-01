@@ -58,11 +58,11 @@ VipPlanModel.hasMany(PostModel, { foreignKey: "vipPlanId", onDelete: "SET NULL" 
 PostModel.belongsTo(VipPlanModel, { foreignKey: "vipPlanId" });
 
 // 📄 POST ↔  CAR_MODEL
-PostModel.hasOne(VehicleDetailModel, { foreignKey: "postId", onDelete: "CASCADE" });
-VehicleDetailModel.belongsTo(PostModel, { foreignKey: "postId" });
+PostModel.hasOne(VehicleDetailModel, { as: "vehicleDetail", foreignKey: "postId", onDelete: "CASCADE" });
+VehicleDetailModel.belongsTo(PostModel, { as: "post", foreignKey: "postId" });
 // 📄 POST ↔  BATTERY_MODEL
-PostModel.hasOne(BatteryDetailModel, { foreignKey: "postId", onDelete: "CASCADE" });
-BatteryDetailModel.belongsTo(PostModel, { foreignKey: "postId" });
+PostModel.hasOne(BatteryDetailModel, { as: "batteryDetail", foreignKey: "postId", onDelete: "CASCADE" });
+BatteryDetailModel.belongsTo(PostModel, { as: "post", foreignKey: "postId" });
 
 // 👤 USER ↔ 💰 VIP PURCHASE (Giao dịch)
 UserModel.hasMany(VipPurchaseModel, { foreignKey: "userId", onDelete: "CASCADE" });
