@@ -34,7 +34,7 @@ export const listAdvancedPublicPosts = async (req, res) => {
     const offset = (pageNum - 1) * sizeNum;
 
     // ===== where: chỉ bài đang active =====
-    const where = { isActive: true };
+    const where = { isActive: true, verifyStatus : verify };
 
     // Tìm kiếm theo tiêu đề/nội dung
     if (q.trim()) {
