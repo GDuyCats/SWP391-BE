@@ -758,3 +758,109 @@ export const sendFinalContractToParties = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+export const sendDraftContractToParties = async (req, res) => {
+  try {
+    const staff = req.user;
+    const { contractId } = req.body;
+
+    // 1️⃣ Kiểm tra quyền
+    if (!staff?.id) {
+      return res.status(401).json({ message: "Missing auth payload" });
+    }
+    if (staff.role !== "staff") {
+      return res.status(403).json({ message: "Only staff can send draft contracts" });
+    }
+    if (!contractId) {
+      return res.status(400).json({ message: "contractId is required" });
+    }
+
+    // 2️⃣ Tìm hợp đồng
+    const contract = await ContractModel.findByPk(contractId);
+    if (!contract) {
+      return res.status(404).json({ message: "Contract not found" });
+    }
+
+    // 3️⃣ Xác thực staff phụ trách
+    if (contract.staffId !== staff.id) {
+      return res.status(403).json({ message: "You are not assigned to this contract" });
+    }
+
+    // 4️⃣ Chỉ cho phép gửi khi đang ở giai đoạn thương lượng xong (pending hoặc negotiating)
+    if (!["pending", "negotiating"].includes(contract.status)) {
+      return res.status(400).json({
+        message: "Contract must be in 'pending' or 'negotiating' state to send draft",
+      });
+    }
+
+    // 5️⃣ Lấy thông tin các bên
+    const [buyer, seller] = await Promise.all([
+      UserModel.findByPk(contract.buyerId, { attributes: ["username", "email"] }),
+      UserModel.findByPk(contract.sellerId, { attributes: ["username", "email"] }),
+    ]);
+
+    if (!buyer || !seller) {
+      return res.status(500).json({ message: "Missing buyer/seller data" });
+    }
+
+    // 6️⃣ Tạo nội dung email
+    const summaryHtml = `
+      <div style="font-family:Arial,sans-serif; line-height:1.6">
+        <h2>📄 Hợp đồng xem trước #${contract.id}</h2>
+        <p>Xin chào, đây là bản hợp đồng <b>dự thảo</b> được gửi đến để hai bên xem và kiểm tra lại nội dung trước khi ký xác nhận.</p>
+        
+        <h3>Thông tin tóm tắt</h3>
+        <ul>
+          <li><b>Giá đề xuất:</b> ${contract.agreedPrice ?? "Chưa chốt"}</li>
+          <li><b>Phí Buyer (%):</b> ${contract.buyerFeePercent ?? 0}%</li>
+          <li><b>Phí Seller (%):</b> ${contract.sellerFeePercent ?? 0}%</li>
+          <li><b>Thời gian hẹn gặp:</b> ${
+            contract.appointmentTime
+              ? new Date(contract.appointmentTime).toLocaleString()
+              : "Chưa có"
+          }</li>
+          <li><b>Địa điểm:</b> ${contract.appointmentPlace ?? "Chưa có"}</li>
+        </ul>
+
+        <p><b>Ghi chú:</b><br>${contract.notes ?? "(Không có ghi chú)"}</p>
+
+        <p>Sau khi xác nhận nội dung, nhân viên phụ trách sẽ tiến hành gửi OTP để hai bên ký hợp đồng.</p>
+
+        <p style="margin-top:24px;font-size:12px;color:#666">
+          Đây là email tự động từ hệ thống. Vui lòng không trả lời trực tiếp.
+        </p>
+      </div>
+    `;
+
+    // 7️⃣ Gửi email
+    const mailToBuyer = new Mail()
+      .setTo(buyer.email)
+      .setSubject(`📄 Hợp đồng xem trước #${contract.id} (Bên mua)`)
+      .setHTML(summaryHtml);
+
+    const mailToSeller = new Mail()
+      .setTo(seller.email)
+      .setSubject(`📄 Hợp đồng xem trước #${contract.id} (Bên bán)`)
+      .setHTML(summaryHtml);
+
+    await Promise.all([mailToBuyer.send(), mailToSeller.send()]);
+
+    // 8️⃣ Cập nhật trạng thái nếu đang "negotiating" → "awaiting_sign"
+    if (contract.status === "negotiating") {
+      contract.status = "awaiting_sign";
+      await contract.save();
+    }
+
+    res.set("Cache-Control", "no-store");
+    return res.status(200).json({
+      message: "Draft contract sent to buyer and seller successfully.",
+      nextStatus: contract.status,
+      sentTo: {
+        buyerEmail: buyer.email,
+        sellerEmail: seller.email,
+      },
+    });
+  } catch (err) {
+    console.error("[contracts/sendDraft] error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};

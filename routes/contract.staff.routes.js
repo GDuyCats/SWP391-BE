@@ -5,6 +5,7 @@ import {
   finalizeNegotiation,
   listStaffContracts,
   sendFinalContractToParties,
+  sendDraftContractToParties, // ✅ thêm
 } from "../controller/contract.controller.js";
 import isStaff from "../middleware/isStaff.js";
 
@@ -48,47 +49,14 @@ const router = Router();
  *     responses:
  *       200:
  *         description: Ghi nhận lịch hẹn thành công
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Appointment recorded successfully
- *                 contract:
- *                   $ref: '#/components/schemas/Contract'
  *       400:
  *         description: Dữ liệu đầu vào sai hoặc contract không hợp lệ
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             examples:
- *               invalidStatus:
- *                 value: { message: "Cannot record appointment for this contract status." }
  *       403:
  *         description: Chỉ staff hoặc admin được phép thực hiện
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               message: "Only staff or admin can record appointments."
  *       404:
  *         description: Không tìm thấy hợp đồng
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               message: "Contract not found"
  *       500:
  *         description: Lỗi máy chủ
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
 
 /**
@@ -117,15 +85,12 @@ const router = Router();
  *                 example: 8
  *               agreedPrice:
  *                 type: number
- *                 format: float
  *                 example: 425000000
  *               buyerFeePercent:
  *                 type: number
- *                 format: float
  *                 example: 3
  *               sellerFeePercent:
  *                 type: number
- *                 format: float
  *                 example: 2
  *               notes:
  *                 type: string
@@ -133,6 +98,44 @@ const router = Router();
  *     responses:
  *       200:
  *         description: Hoàn tất thương lượng thành công
+ *       400:
+ *         description: Dữ liệu không hợp lệ (giá hoặc trạng thái)
+ *       403:
+ *         description: Chỉ staff hoặc admin được phép thực hiện
+ *       404:
+ *         description: Không tìm thấy hợp đồng
+ *       500:
+ *         description: Lỗi máy chủ
+ */
+
+/**
+ * @swagger
+ * /staff/contracts/send-draft:
+ *   post:
+ *     summary: Staff gửi hợp đồng dự thảo cho Buyer và Seller để xem trước khi ký
+ *     description: >
+ *       Staff phụ trách có thể gửi **bản hợp đồng dự thảo** (preview/summary) đến **buyer** và **seller**  
+ *       để hai bên kiểm tra nội dung trước khi tiến hành ký OTP.  
+ *       Áp dụng khi contract đang ở trạng thái **pending** hoặc **negotiating**.  
+ *       Nếu đang **negotiating**, sau khi gửi có thể chuyển sang **awaiting_sign** (đợi ký OTP).
+ *     tags: [Contracts - Staff]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - contractId
+ *             properties:
+ *               contractId:
+ *                 type: integer
+ *                 example: 8
+ *     responses:
+ *       200:
+ *         description: Gửi hợp đồng dự thảo thành công
  *         content:
  *           application/json:
  *             schema:
@@ -140,42 +143,29 @@ const router = Router();
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Negotiation finalized successfully
- *                 contract:
- *                   $ref: '#/components/schemas/Contract'
+ *                   example: Draft contract sent to buyer and seller successfully.
+ *                 nextStatus:
+ *                   type: string
+ *                   example: awaiting_sign
+ *                 sentTo:
+ *                   type: object
+ *                   properties:
+ *                     buyerEmail:
+ *                       type: string
+ *                       example: buyer@example.com
+ *                     sellerEmail:
+ *                       type: string
+ *                       example: seller@example.com
  *       400:
- *         description: Dữ liệu không hợp lệ (giá hoặc trạng thái)
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             examples:
- *               invalidStatus:
- *                 value: { message: "Cannot finalize negotiation for this contract status." }
- *               invalidPrice:
- *                 value: { message: "Invalid agreed price." }
+ *         description: Trạng thái không phù hợp để gửi nháp hoặc thiếu dữ liệu
+ *       401:
+ *         description: Thiếu/sai token
  *       403:
- *         description: Chỉ staff hoặc admin được phép thực hiện
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               message: "Only staff or admin can finalize negotiation."
+ *         description: Không phải staff phụ trách hợp đồng này
  *       404:
  *         description: Không tìm thấy hợp đồng
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               message: "Contract not found"
  *       500:
  *         description: Lỗi máy chủ
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
 
 /**
@@ -204,74 +194,17 @@ const router = Router();
  *                 example: 8
  *     responses:
  *       200:
- *         description: Gửi hợp đồng hoàn tất thành công và cập nhật trạng thái completed
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Final signed contract sent to buyer and seller. Contract marked as completed.
- *                 nextStatus:
- *                   type: string
- *                   example: completed
- *                 contractId:
- *                   type: integer
- *                   example: 8
- *                 sentTo:
- *                   type: object
- *                   properties:
- *                     buyerEmail:
- *                       type: string
- *                       example: buyer@example.com
- *                     sellerEmail:
- *                       type: string
- *                       example: seller@example.com
+ *         description: Gửi hợp đồng hoàn tất thành công
  *       400:
- *         description: Chưa đủ điều kiện gửi (chưa signed đủ 2 bên hoặc trạng thái không phải 'signed')
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             examples:
- *               notSigned:
- *                 value: { message: "Both buyer and seller must sign before sending final contract" }
- *               wrongStatus:
- *                 value: { message: "Contract is not fully signed yet" }
+ *         description: Chưa đủ điều kiện gửi (chưa signed đủ 2 bên)
  *       401:
  *         description: Thiếu hoặc sai token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               message: "Missing auth payload"
  *       403:
  *         description: Staff không phải người được assign vào hợp đồng này
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             examples:
- *               notAssigned:
- *                 value: { message: "You are not assigned to this contract" }
- *               notStaff:
- *                 value: { message: "Only staff can send finalized contracts" }
  *       404:
  *         description: Không tìm thấy hợp đồng
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               message: "Contract not found"
  *       500:
  *         description: Lỗi máy chủ
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
 
 /**
@@ -287,63 +220,15 @@ const router = Router();
  *     responses:
  *       200:
  *         description: Danh sách hợp đồng của staff
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 staffId:
- *                   type: integer
- *                   example: 5
- *                 total:
- *                   type: integer
- *                   example: 2
- *                 contracts:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Contract'
- *             examples:
- *               ok:
- *                 summary: Ví dụ trả về
- *                 value:
- *                   staffId: 5
- *                   total: 2
- *                   contracts:
- *                     - id: 12
- *                       buyerId: 8
- *                       sellerId: 4
- *                       staffId: 5
- *                       status: "negotiating"
- *                       updatedAt: "2025-10-16T13:22:00Z"
- *                     - id: 15
- *                       buyerId: 11
- *                       sellerId: 9
- *                       staffId: 5
- *                       status: "meeting_scheduled"
- *                       updatedAt: "2025-10-17T10:00:00Z"
  *       401:
  *         description: Thiếu token / token không hợp lệ
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               message: "Unauthorized"
  *       403:
  *         description: Chỉ staff hoặc admin mới được xem danh sách này
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               message: "Only staff or admin can view assigned contracts."
  *       500:
  *         description: Lỗi máy chủ
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
+
+// ================= ROUTES =================
 
 // Staff ghi nhận lịch hẹn
 router.post("/appointment", authenticateToken, isStaff, recordAppointment);
@@ -351,15 +236,13 @@ router.post("/appointment", authenticateToken, isStaff, recordAppointment);
 // Staff chốt thương lượng
 router.post("/finalize", authenticateToken, isStaff, finalizeNegotiation);
 
-// Staff gửi hợp đồng cuối cùng cho buyer & seller, chuyển trạng thái -> completed
+// ✅ Staff gửi hợp đồng dự thảo cho buyer & seller để xem trước khi ký
+router.post("/send-draft", authenticateToken, isStaff, sendDraftContractToParties);
+
+// Staff gửi hợp đồng cuối cùng cho buyer & seller (chuyển trạng thái -> completed)
 router.post("/send-final", authenticateToken, isStaff, sendFinalContractToParties);
 
 // Staff xem danh sách hợp đồng được assign
-router.get(
-  "/allContracts",
-  authenticateToken,
-  isStaff, // chỉ staff mới gọi được
-  listStaffContracts
-);
+router.get("/allContracts", authenticateToken, isStaff, listStaffContracts);
 
 export default router;
