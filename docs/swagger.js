@@ -1,7 +1,13 @@
 // ./docs/swagger.js
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import swaggerJSDoc from "swagger-jsdoc";
+import swaggerUi from "swagger-ui-express"; // ✅ import bình thường, không dùng await
 import dotenv from "dotenv";
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Ưu tiên URL từ ENV:
@@ -12,6 +18,15 @@ const SERVER_URL =
   process.env.API_BASE_URL ||
   `http://localhost:${Number(process.env.BE_PORT) || 8081}`;
 
+// ✅ Dùng đường dẫn tuyệt đối để swagger-jsdoc quét
+const apisGlobs = [
+  path.join(process.cwd(), "routes/**/*.js"),
+  path.join(process.cwd(), "controller/**/*.js"),
+  path.join(process.cwd(), "controllers/**/*.js"),
+  path.join(process.cwd(), "docs/**/*.js"),
+  path.join(process.cwd(), "docs/**/*.yaml"), // 👈 load components.yaml
+];
+
 const options = {
   definition: {
     openapi: "3.0.3",
@@ -20,30 +35,19 @@ const options = {
       version: "1.0.0",
       description: "API docs for SWP391",
     },
-    servers: [
-      { url: SERVER_URL, description: "Current server" },
-      // Thêm server prod cố định nếu muốn:
-      // { url: "https://swp391-be-production.up.railway.app", description: "Production" },
-    ],
+    servers: [{ url: SERVER_URL, description: "Current server" }],
     components: {
       securitySchemes: {
-        bearerAuth: {
-          type: "http",
-          scheme: "bearer",
-          bearerFormat: "JWT",
-        },
+        bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
       },
-      // (Tuỳ chọn) đặt một vài schemas dùng chung
+      // giữ Message; các schema còn lại sẽ merge từ docs/components.yaml
       schemas: {
         Message: {
           type: "object",
-          properties: {
-            message: { type: "string", example: "OK" },
-          },
+          properties: { message: { type: "string", example: "OK" } },
         },
       },
     },
-    // Áp dụng Bearer cho mặc định tất cả API (endpoint public có thể override: `security: []`)
     security: [{ bearerAuth: [] }],
     tags: [
       { name: "Admin", description: "Admin manage everything" },
@@ -52,20 +56,16 @@ const options = {
       { name: "Auth", description: "Authorization and login" },
       { name: "Users", description: "API for users manage their profile" },
       { name: "Users ( Posts )", description: "API for user manage their posts" },
-      { name: "Plan & Checkout", description: "API for user payment"},
-      { name: "Admin manage Plan", description : "API for admin manage the plan"}
+      { name: "Plan & Checkout", description: "API for user payment" },
+      { name: "Admin manage Plan", description: "API for admin manage the plan" },
     ],
   },
-
-  // Quét các file có @openapi JSDoc
-  // Lưu ý: đường dẫn tính từ project root (process.cwd()).
-  apis: [
-    "./routes/**/*.js",
-    "./controller/**/*.js",
-    "./controllers/**/*.js",
-    "./docs/**/*.js",     // nếu có file doc riêng (vd: admin.swagger.js)
-    "./index.js",         // nếu bạn có doc trong file này
-  ],
+  apis: apisGlobs,
 };
 
 export const swaggerSpec = swaggerJSDoc(options);
+
+export function setupSwagger(app) {
+  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  app.get("/api-docs.json", (_req, res) => res.json(swaggerSpec)); // tiện debug
+}

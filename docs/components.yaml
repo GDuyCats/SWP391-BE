@@ -1,0 +1,90 @@
+openapi: 3.0.0
+info:
+  title: Shared Components
+  version: 1.0.0
+
+components:
+  schemas:
+    Message:
+      type: object
+      properties:
+        message: { type: string }
+
+    Pagination:
+      type: object
+      properties:
+        page:     { type: integer, example: 1 }
+        pageSize: { type: integer, example: 10 }
+        total:    { type: integer, example: 35 }
+      required: [page, pageSize, total]
+
+    UserPublic:
+      type: object
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        avatar: { type: string, nullable: true }
+
+    PostPublic:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        content: { type: string }
+        image:
+          type: array
+          items: { type: string }
+        thumbnail: { type: string, nullable: true }
+        price: { type: number, format: float }
+        phone: { type: string, nullable: true }
+        category:
+          type: string
+          enum: [battery, vehicle]
+        isVip: { type: boolean }
+        vipTier:
+          type: string
+          enum: [diamond, gold, silver]
+          nullable: true
+        vipPriority: { type: integer }
+        vipExpiresAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        User:
+          $ref: '#/components/schemas/UserPublic'
+
+    PostDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/PostPublic'
+        - type: object
+          description: Kết hợp các trường chi tiết cho vehicle/battery (có thể null tùy category).
+          properties:
+            hasBattery:       { type: boolean, nullable: true }
+            brand:            { type: string,  nullable: true }
+            model:            { type: string,  nullable: true }
+            year:             { type: number,  nullable: true }
+            mileage:          { type: number,  nullable: true }
+            condition:        { type: string,  nullable: true }
+            battery_brand:    { type: string,  nullable: true }
+            battery_model:    { type: string,  nullable: true }
+            battery_capacity: { type: number,  nullable: true }
+            battery_type:     { type: string,  nullable: true }
+            battery_range:    { type: number,  nullable: true }
+            battery_condition: { type: string,  nullable: true }
+            charging_time:    { type: number,  nullable: true }
+            compatible_models:
+              oneOf:
+                - type: array
+                  items: { type: string }
+                - type: string
+                - type: "null"
+
+    PostListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PostPublic'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      required: [items, pagination]
