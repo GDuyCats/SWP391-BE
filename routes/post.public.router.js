@@ -6,7 +6,7 @@ const router = Router();
 
 /**
  * @openapi
- * /:
+ * /posts:
  *   get:
  *     tags:
  *       - Posts (Public Search)
@@ -92,7 +92,7 @@ const router = Router();
 
 /**
  * @openapi
- * /{id}:
+ * /posts/{id}:
  *   get:
  *     tags:
  *       - Posts (Public Search)

@@ -16,7 +16,7 @@ const router = Router();
 
 /**
  * @openapi
- * /all:
+ * /admin/all:
  *   get:
  *     summary: List all posts for Admin/Staff
  *     description: |
@@ -67,7 +67,7 @@ router.get("/all", authenticateToken, isStaffOrAdmin, getAllPosts);
 
 /**
  * @openapi
- * /{id}/detail:
+ * /admin/{id}/detail:
  *   get:
  *     summary: Get post detail for Admin/Staff
  *     description: |
@@ -124,7 +124,7 @@ router.get("/:id/detail", authenticateToken, isStaffOrAdmin, getPostDetail);
 
 /**
  * @openapi
- * /{id}/verify:
+ * /admin/{id}/verify:
  *   patch:
  *     summary: Staff/Admin verify or unverify a post
  *     description: |
