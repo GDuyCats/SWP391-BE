@@ -203,7 +203,7 @@ export const createMyPost = async (req, res) => {
           battery_capacity: Number(battery_capacity),
           battery_type: battery_type ?? null,
           battery_condition: battery_condition ?? null,
-          compatible_models: compatible_models ?? null,
+          compatible_models: compat,
         },
         { transaction: tx }
       );

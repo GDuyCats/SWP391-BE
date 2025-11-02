@@ -97,7 +97,7 @@ app.options(/.*/, cors(corsOptions));
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // --- Routes ---
 
-
+app.use(post_public_router);
 app.use(auth_routes);
 app.use(mail_routes);
 app.use(verify_routes);
@@ -105,7 +105,6 @@ app.use("/admin", admin_routes);
 app.use("/admin", admin_vipplans_routes);
 app.use("/profile", user_routes);
 app.use(user_post_routes);
-app.use(post_public_router);
 app.use(post_verify_routes);
 app.use("/plans",billing_routes);
 app.use("/contracts", contract_routes)
