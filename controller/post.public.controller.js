@@ -154,7 +154,8 @@ export const listAdvancedPublicPosts = async (req, res) => {
         category: p.category,
         image: images,
         thumbnail: p.thumbnail ?? null,
-
+        isActive: p.isActive ?? null,
+        verifyStatus : p.verifyStatus ?? null,
         isVip: p.isVip ?? false,
         vipTier: p.vipTier ?? null,
         vipPriority: p.vipPriority ?? 0,
