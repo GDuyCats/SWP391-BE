@@ -1,6 +1,6 @@
 // controller/user.post.controller.js
 import { sequelize, UserModel, PostModel, VipPlanModel, BatteryDetailModel, VehicleDetailModel } from "../postgres/postgres.js";
-import { UTApi } from "uploadthing/server"
+import { UTApi } from "uploadthing/server";
 const utapi = new UTApi();
 const PHONE_REGEX = /^(?:\+84|0)(?:\d{9,10})$/;
 
@@ -43,6 +43,36 @@ function normalizeImages(input) {
 
   // Các kiểu khác: bỏ qua (giữ hành vi cũ)
   return [];
+}
+
+// Chuẩn hoá compatible_models (nhận array | JSON string | CSV string)
+function normalizeCompatibleModels(input) {
+  if (input == null) return null;
+
+  if (Array.isArray(input)) {
+    const arr = input.map(v => String(v).trim()).filter(Boolean);
+    return arr.length ? arr : null;
+  }
+
+  if (typeof input === "string") {
+    const s = input.trim();
+    if (!s) return null;
+
+    try {
+      const parsed = JSON.parse(s);
+      if (Array.isArray(parsed)) {
+        const arr = parsed.map(v => String(v).trim()).filter(Boolean);
+        return arr.length ? arr : null;
+      }
+    } catch {
+      const arr = s.split(",").map(v => v.trim()).filter(Boolean);
+      return arr.length ? arr : null;
+    }
+
+    return [s];
+  }
+
+  return null;
 }
 
 
@@ -195,6 +225,7 @@ export const createMyPost = async (req, res) => {
         { transaction: tx }
       );
     } else {
+      const compat = normalizeCompatibleModels(compatible_models);
       await BatteryDetailModel.create(
         {
           postId: post.id,
@@ -267,8 +298,8 @@ export const updateMyPost = async (req, res) => {
       newImagesAppend = outs.filter(o => !o.error && o.data?.url).map(o => o.data.url);
     }
 
-    // ===== Bỏ qua VIP fields =====
-    if ([isActive, isVip, vipPlanId, vipTier, vipPriority, vipExpiresAt].some(v => v !== undefined)) {
+    // ===== Bỏ qua VIP fields (noop) =====
+    if ([isActive, isVip, vipTier, vipPriority, vipExpiresAt].some(v => v !== undefined)) {
       // noop
     }
 
@@ -377,7 +408,9 @@ export const updateMyPost = async (req, res) => {
       if (battery_capacity !== undefined) bd.battery_capacity = battery_capacity != null ? Number(battery_capacity) : null;
       if (battery_type !== undefined) bd.battery_type = battery_type ?? null;
       if (battery_condition !== undefined) bd.battery_condition = battery_condition ?? null;
-      if (compatible_models !== undefined) bd.compatible_models = compatible_models ?? null;
+      if (compatible_models !== undefined) {
+        bd.compatible_models = normalizeCompatibleModels(compatible_models);
+      }
 
       await bd.save({ transaction: tx });
     }
@@ -413,6 +446,7 @@ export const deleteMyPost = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 // ======================================================
 // GET MY POSTS
 // ======================================================
