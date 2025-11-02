@@ -110,10 +110,10 @@ router.post("/", authenticateToken,isCustomer, createPurchaseRequest);
  * /PurchaseRequests/{id}/accept:
  *   patch:
  *     tags: [Purchase Requests]
- *     summary: Seller chấp nhận yêu cầu mua
+ *     summary: Admin chấp nhận yêu cầu mua
  *     description: |
  *       - Khi chấp nhận, hệ thống tự động tạo **Contract** mới với trạng thái `pending`.  
- *       - Chỉ `seller` của bài đăng mới có quyền thao tác.
+ *       - Chỉ `Admin` của bài đăng mới có quyền thao tác.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -132,7 +132,7 @@ router.post("/", authenticateToken,isCustomer, createPurchaseRequest);
  *       500:
  *         description: Internal server error
  */
-router.patch("/:id/accept", authenticateToken, isCustomer, acceptPurchaseRequest);
+router.patch("/:id/accept", authenticateToken, isAdmin, acceptPurchaseRequest);
 
 /**
  * @openapi

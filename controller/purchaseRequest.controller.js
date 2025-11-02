@@ -57,10 +57,10 @@ export const acceptPurchaseRequest = async (req, res) => {
     const request = await PurchaseRequestModel.findByPk(id);
     if (!request) return res.status(404).json({ message: "Purchase request not found" });
 
-    // Role check
-    const isAdmin = actor.role === "admin";
-    const isSeller = actor.id === request.sellerId;
-    const isStaff = actor.role === "staff";
+    // // Role check
+    // const isAdmin = actor.role === "admin";
+    // const isSeller = actor.id === request.sellerId;
+    // const isStaff = actor.role === "staff";
 
     if (!(isAdmin || isSeller || isStaff))
       return res.status(403).json({ message: "You are not allowed to accept this request" });

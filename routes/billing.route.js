@@ -80,6 +80,10 @@ const router = Router();
  *           schema:
  *             type: object
  *             properties:
+ *               postId:
+ *                 type: integer
+ *                 example: 1
+ *                 description: The ID of the post want to purchase with vip Plan.
  *               planId:
  *                 type: integer
  *                 example: 1
