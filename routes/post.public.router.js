@@ -142,6 +142,14 @@ const router = Router();
  *       properties:
  *         message: { type: string }
  *
+ *     Pagination:
+ *       type: object
+ *       properties:
+ *         page:     { type: integer, example: 1 }
+ *         pageSize: { type: integer, example: 10 }
+ *         total:    { type: integer, example: 35 }
+ *       required: [page, pageSize, total]
+ *
  *     UserPublic:
  *       type: object
  *       properties:
@@ -180,28 +188,38 @@ const router = Router();
  *       allOf:
  *         - $ref: '#/components/schemas/PostPublic'
  *         - type: object
+ *           description: Kết hợp các trường chi tiết cho vehicle/battery (có thể null tùy category).
  *           properties:
- *             // Vehicle
- *             hasBattery: { type: boolean, nullable: true }
- *             brand: { type: string, nullable: true }
- *             model: { type: string, nullable: true }
- *             year: { type: number, nullable: true }
- *             mileage: { type: number, nullable: true }
- *             condition: { type: string, nullable: true }
- *             // Battery
- *             battery_brand: { type: string, nullable: true }
- *             battery_model: { type: string, nullable: true }
- *             battery_capacity: { type: number, nullable: true }
- *             battery_type: { type: string, nullable: true }
- *             battery_range: { type: number, nullable: true }
- *             battery_condition: { type: string, nullable: true }
- *             charging_time: { type: number, nullable: true }
+ *             hasBattery:       { type: boolean, nullable: true, description: "Vehicle: có kèm pin hay không" }
+ *             brand:            { type: string,  nullable: true }
+ *             model:            { type: string,  nullable: true }
+ *             year:             { type: number,  nullable: true }
+ *             mileage:          { type: number,  nullable: true }
+ *             condition:        { type: string,  nullable: true }
+ *             battery_brand:    { type: string,  nullable: true }
+ *             battery_model:    { type: string,  nullable: true }
+ *             battery_capacity: { type: number,  nullable: true }
+ *             battery_type:     { type: string,  nullable: true }
+ *             battery_range:    { type: number,  nullable: true }
+ *             battery_condition:{ type: string,  nullable: true }
+ *             charging_time:    { type: number,  nullable: true }
  *             compatible_models:
  *               oneOf:
  *                 - type: array
  *                   items: { type: string }
  *                 - type: string
  *                 - type: "null"
+ *
+ *     PostListResponse:
+ *       type: object
+ *       properties:
+ *         items:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/PostPublic'
+ *         pagination:
+ *           $ref: '#/components/schemas/Pagination'
+ *       required: [items, pagination]
  */
 
 router.get("/", listAdvancedPublicPosts);
