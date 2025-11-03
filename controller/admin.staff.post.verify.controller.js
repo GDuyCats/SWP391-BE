@@ -1,6 +1,11 @@
 // controllers/post.verify.controller.js
-import { PostModel, UserModel } from "../postgres/postgres.js";
-
+// import { PostModel, UserModel } from "../postgres/postgres.js";
+import {
+  PostModel,
+  UserModel,
+  VehicleDetailModel,   // ⬅️ phải có
+  BatteryDetailModel,   // ⬅️ nếu bạn include batteryDetail
+} from "../postgres/postgres.js";
 const PUBLIC_POST_ATTRS = [
   "id",
   "title",
