@@ -168,7 +168,7 @@ router.patch("/:id/accept", authenticateToken, isAdmin, acceptPurchaseRequest);
  *       500:
  *         description: Internal server error
  */
-router.patch("/:id/reject", authenticateToken, isCustomer, rejectPurchaseRequest);
+router.patch("/:id/reject", authenticateToken, isCustomerOrAdmin, rejectPurchaseRequest);
 
 /**
  * @openapi

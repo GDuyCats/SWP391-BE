@@ -62,8 +62,8 @@ export const acceptPurchaseRequest = async (req, res) => {
     // const isSeller = actor.id === request.sellerId;
     // const isStaff = actor.role === "staff";
 
-    if (!(isAdmin || isSeller || isStaff))
-      return res.status(403).json({ message: "You are not allowed to accept this request" });
+    // if (!(isAdmin || isSeller || isStaff))
+    //   return res.status(403).json({ message: "You are not allowed to accept this request" });
 
     if (request.status !== "pending")
       return res.status(400).json({ message: `Cannot accept a ${request.status} request` });
@@ -108,8 +108,8 @@ export const rejectPurchaseRequest = async (req, res) => {
     const isSeller = actor.id === request.sellerId;
     const isStaff = actor.role === "staff";
 
-    if (!(isAdmin || isSeller || isStaff))
-      return res.status(403).json({ message: "You are not allowed to reject this request" });
+    // if (!(isAdmin || isSeller || isStaff))
+    //   return res.status(403).json({ message: "You are not allowed to reject this request" });
 
     if (request.status !== "pending")
       return res.status(400).json({ message: `Cannot reject a ${request.status} request` });
