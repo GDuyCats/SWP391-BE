@@ -23,19 +23,60 @@ const PUBLIC_POST_ATTRS = [
  * - Admin: thấy tất cả
  * - Staff: chỉ thấy bài isActive = true
  */
+// Admin/Staff: lấy tất cả posts + chi tiết
 const getAllPosts = async (req, res) => {
   try {
     const role = req.user?.role;
-    if (!["admin", "staff"].includes(role)) {
-      return res.status(403).json({ message: "Bạn không có quyền xem toàn bộ bài đăng" });
-    }
 
+    // Staff chỉ thấy bài đang active; Admin thấy tất cả
     const where = role === "staff" ? { isActive: true } : undefined;
 
     const posts = await PostModel.findAll({
       where,
-      attributes: PUBLIC_POST_ATTRS,
-      include: [{ model: UserModel, attributes: ["id", "username", "avatar", "email"] }],
+      attributes: PUBLIC_POST_ATTRS, // giữ nguyên danh sách trường public của Post
+      include: [
+        {
+          model: UserModel,
+          attributes: ["id", "username", "avatar", "email"],
+        },
+        // Chi tiết xe (nằm ở VehicleDetails) - alias phải khớp với association
+        {
+          model: VehicleDetailModel,
+          as: "vehicleDetail",
+          required: false,
+          attributes: [
+            "id",
+            "brand",
+            "model",
+            "year",
+            "mileage",
+            "condition",
+            // các trường pin đi kèm khi post là vehicle có pin
+            "battery_brand",
+            "battery_model",
+            "battery_capacity",
+            "battery_type",
+            "battery_range",
+            "battery_condition",
+            "charging_time",
+          ],
+        },
+        // Chi tiết pin (nằm ở BatteryDetails) - alias phải khớp với association
+        {
+          model: BatteryDetailModel,
+          as: "batteryDetail",
+          required: false,
+          attributes: [
+            "id",
+            "battery_brand",
+            "battery_model",
+            "battery_capacity",
+            "battery_type",
+            "battery_condition",
+            "compatible_models",
+          ],
+        },
+      ],
       order: [["createdAt", "DESC"]],
     });
 
@@ -61,9 +102,6 @@ const verifyPost = async (req, res) => {
     const { id } = req.params;
     const raw = String(req.body?.verifyStatus || "").trim().toLowerCase();
 
-    if (!["admin", "staff"].includes(userRole)) {
-      return res.status(403).json({ message: "Bạn không có quyền duyệt bài" });
-    }
     if (!["verify", "nonverify"].includes(raw)) {
       return res.status(400).json({ message: "verifyStatus phải là 'verify' hoặc 'nonverify'" });
     }
@@ -102,13 +140,50 @@ const getPostDetail = async (req, res) => {
     const role = req.user?.role;
     const { id } = req.params;
 
-    if (!["admin", "staff"].includes(role)) {
-      return res.status(403).json({ message: "Bạn không có quyền xem chi tiết bài đăng" });
-    }
-
     const post = await PostModel.findByPk(id, {
       attributes: PUBLIC_POST_ATTRS,
-      include: [{ model: UserModel, attributes: ["id", "username", "avatar", "email"] }],
+      include: [
+        {
+          model: UserModel,
+          attributes: ["id", "username", "avatar", "email"],
+        },
+        // Chi tiết xe (alias phải khớp association)
+        {
+          model: VehicleDetailModel,
+          as: "vehicleDetail",
+          required: false,
+          attributes: [
+            "id",
+            "brand",
+            "model",
+            "year",
+            "mileage",
+            "condition",
+            "battery_brand",
+            "battery_model",
+            "battery_capacity",
+            "battery_type",
+            "battery_range",
+            "battery_condition",
+            "charging_time",
+          ],
+        },
+        // Chi tiết pin (alias phải khớp association)
+        {
+          model: BatteryDetailModel,
+          as: "batteryDetail",
+          required: false,
+          attributes: [
+            "id",
+            "battery_brand",
+            "battery_model",
+            "battery_capacity",
+            "battery_type",
+            "battery_condition",
+            "compatible_models",
+          ],
+        },
+      ],
     });
 
     if (!post) return res.status(404).json({ message: "Không tìm thấy bài đăng" });
@@ -123,5 +198,6 @@ const getPostDetail = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 
 export { getAllPosts, verifyPost, getPostDetail };
