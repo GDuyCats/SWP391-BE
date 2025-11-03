@@ -33,8 +33,8 @@ export const listAdvancedPublicPosts = async (req, res) => {
     const sizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 10, 1), 50);
     const offset = (pageNum - 1) * sizeNum;
 
-    // ===== where: chỉ bài đang active =====
-    const where = { isActive: true, verifyStatus : 'verify' };
+    // ===== where: chỉ bài đang active & đã verify =====
+    const where = { isActive: true, verifyStatus: "verify" };
 
     // Tìm kiếm theo tiêu đề/nội dung
     if (q.trim()) {
@@ -113,19 +113,41 @@ export const listAdvancedPublicPosts = async (req, res) => {
         break;
     }
 
-    // ===== query (include vehicleDetail + user) =====
+    // ===== query (include vehicleDetail + batteryDetail + user) =====
     const { rows, count } = await PostModel.findAndCountAll({
       where,
       include: [
         { model: UserModel, attributes: ["id", "username", "avatar"] },
         {
           model: VehicleDetailModel,
-          as: "vehicleDetail",           // <-- alias phải khớp associations
+          as: "vehicleDetail",
           required: false,
           attributes: [
-            "brand","model","year","mileage","condition",
-            "battery_brand","battery_model","battery_capacity",
-            "battery_type","battery_range","battery_condition","charging_time",
+            "brand",
+            "model",
+            "year",
+            "mileage",
+            "condition",
+            "battery_brand",
+            "battery_model",
+            "battery_capacity",
+            "battery_type",
+            "battery_range",
+            "battery_condition",
+            "charging_time",
+          ],
+        },
+        {
+          model: BatteryDetailModel,
+          as: "batteryDetail",
+          required: false,
+          attributes: [
+            "battery_brand",
+            "battery_model",
+            "battery_capacity",
+            "battery_type",
+            "battery_condition",
+            "compatible_models",
           ],
         },
       ],
@@ -138,12 +160,23 @@ export const listAdvancedPublicPosts = async (req, res) => {
     const data = rows.map((row) => {
       const p = row.get({ plain: true });
       const v = p.vehicleDetail ?? null;
+      const b = p.batteryDetail ?? null;
 
       const images = Array.isArray(p.image)
         ? p.image
         : Array.isArray(p.images)
         ? p.images
         : [];
+
+      // Ưu tiên lấy thông tin pin từ vehicleDetail nếu có, nếu không thì lấy từ batteryDetail
+      const battery_brand = v?.battery_brand ?? b?.battery_brand ?? null;
+      const battery_model = v?.battery_model ?? b?.battery_model ?? null;
+      const battery_capacity = v?.battery_capacity ?? b?.battery_capacity ?? null;
+      const battery_type = v?.battery_type ?? b?.battery_type ?? null;
+      const battery_condition = v?.battery_condition ?? b?.battery_condition ?? null;
+      const battery_range = v?.battery_range ?? null; // chỉ có ở vehicleDetail
+      const charging_time = v?.charging_time ?? null; // chỉ có ở vehicleDetail
+      const compatible_models = b?.compatible_models ?? null; // chỉ có ở batteryDetail
 
       return {
         id: p.id,
@@ -155,7 +188,7 @@ export const listAdvancedPublicPosts = async (req, res) => {
         image: images,
         thumbnail: p.thumbnail ?? null,
         isActive: p.isActive ?? null,
-        verifyStatus : p.verifyStatus ?? null,
+        verifyStatus: p.verifyStatus ?? null,
         isVip: p.isVip ?? false,
         vipTier: p.vipTier ?? null,
         vipPriority: p.vipPriority ?? 0,
@@ -168,19 +201,22 @@ export const listAdvancedPublicPosts = async (req, res) => {
           ? { id: p.User.id, username: p.User.username, avatar: p.User.avatar ?? null }
           : null,
 
-        // Vehicle + battery info (từ VehicleDetails)
+        // Vehicle
         brand: v?.brand ?? null,
         model: v?.model ?? null,
         year: v?.year ?? null,
         mileage: v?.mileage ?? null,
         condition: v?.condition ?? null,
-        battery_brand: v?.battery_brand ?? null,
-        battery_model: v?.battery_model ?? null,
-        battery_capacity: v?.battery_capacity ?? null,
-        battery_type: v?.battery_type ?? null,
-        battery_range: v?.battery_range ?? null,
-        battery_condition: v?.battery_condition ?? null,
-        charging_time: v?.charging_time ?? null,
+
+        // Battery (gộp từ vehicleDetail hoặc batteryDetail)
+        battery_brand,
+        battery_model,
+        battery_capacity,
+        battery_type,
+        battery_range,
+        battery_condition,
+        charging_time,
+        compatible_models,
       };
     });
 
@@ -202,11 +238,14 @@ export const getPostDetail = async (req, res) => {
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ message: "Invalid post id" });
     }
+
+    // (giữ lại log đếm vehicle detail nếu bạn đang dùng để debug)
     const [vCount] = await VehicleDetailModel.sequelize.query(
       'SELECT COUNT(*) FROM "VehicleDetails" WHERE "postId" = :id',
       { replacements: { id }, type: VehicleDetailModel.sequelize.QueryTypes.SELECT }
     );
     console.log("VehicleDetails rows for this postId:", vCount.count);
+
     const post = await PostModel.findOne({
       where: { id, isActive: true },
       include: [
@@ -233,6 +272,19 @@ export const getPostDetail = async (req, res) => {
             "charging_time",
           ],
         },
+        {
+          model: BatteryDetailModel,
+          as: "batteryDetail",
+          required: false,
+          attributes: [
+            "battery_brand",
+            "battery_model",
+            "battery_capacity",
+            "battery_type",
+            "battery_condition",
+            "compatible_models",
+          ],
+        },
       ],
     });
 
@@ -242,12 +294,23 @@ export const getPostDetail = async (req, res) => {
 
     const p = post.get({ plain: true });
     const v = p.vehicleDetail || null;
+    const b = p.batteryDetail || null;
 
     const images = Array.isArray(p.image)
       ? p.image
       : Array.isArray(p.images)
-        ? p.images
-        : [];
+      ? p.images
+      : [];
+
+    // Gộp thông tin pin như ở list
+    const battery_brand = v?.battery_brand ?? b?.battery_brand ?? null;
+    const battery_model = v?.battery_model ?? b?.battery_model ?? null;
+    const battery_capacity = v?.battery_capacity ?? b?.battery_capacity ?? null;
+    const battery_type = v?.battery_type ?? b?.battery_type ?? null;
+    const battery_condition = v?.battery_condition ?? b?.battery_condition ?? null;
+    const battery_range = v?.battery_range ?? null;
+    const charging_time = v?.charging_time ?? null;
+    const compatible_models = b?.compatible_models ?? null;
 
     return res.json({
       id: p.id,
@@ -256,7 +319,7 @@ export const getPostDetail = async (req, res) => {
       price: p.price,
       phone: p.phone ?? null,
       category: p.category,
-      image: Array.isArray(p.image) ? p.image : Array.isArray(p.images) ? p.images : [],
+      image: images,
       thumbnail: p.thumbnail ?? null,
       isVip: p.isVip ?? false,
       vipTier: p.vipTier ?? null,
@@ -267,25 +330,28 @@ export const getPostDetail = async (req, res) => {
 
       User: p.User
         ? {
-          id: p.User.id,
-          username: p.User.username,
-          avatar: p.User.avatar ?? null,
-        }
+            id: p.User.id,
+            username: p.User.username,
+            avatar: p.User.avatar ?? null,
+          }
         : null,
 
-      // VehicleDetail (bao gồm thông tin battery)
+      // Vehicle
       brand: v?.brand ?? null,
       model: v?.model ?? null,
       year: v?.year ?? null,
       mileage: v?.mileage ?? null,
       condition: v?.condition ?? null,
-      battery_brand: v?.battery_brand ?? null,
-      battery_model: v?.battery_model ?? null,
-      battery_capacity: v?.battery_capacity ?? null,
-      battery_type: v?.battery_type ?? null,
-      battery_range: v?.battery_range ?? null,
-      battery_condition: v?.battery_condition ?? null,
-      charging_time: v?.charging_time ?? null,
+
+      // Battery (gộp)
+      battery_brand,
+      battery_model,
+      battery_capacity,
+      battery_type,
+      battery_range,
+      battery_condition,
+      charging_time,
+      compatible_models,
     });
   } catch (err) {
     console.error("getPostDetail error:", err);
