@@ -10,7 +10,7 @@ const router = Router();
  *   get:
  *     tags:
  *       - Posts (Public Search)
- *     summary: Search public posts (only isActive=true, prioritize VIP)
+ *     summary: Search public posts (only isActive=true anđ VerifyStatus = verify , prioritize VIP)
  *     description: |
  *       Returns a list of active posts (`isActive = true`).
  *       Supports keyword, category, price/date ranges, VIP filters, sort, and pagination.
