@@ -180,6 +180,6 @@ router.get("/:id/detail", authenticateToken, isStaffOrAdmin, getPostDetail);
  *       500:
  *         description: Internal server error
  */
-router.patch("/:id/verify", authenticateToken, isStaff, verifyPost);
+router.patch("/:id/verify", authenticateToken, isStaffOrAdmin, verifyPost);
 
 export default router;
