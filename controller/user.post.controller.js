@@ -45,6 +45,15 @@ function normalizeImages(input) {
   return [];
 }
 
+function toBool(v, defaultVal = true) {
+  if (v === undefined || v === null) return defaultVal;
+  if (typeof v === "boolean") return v;
+  const s = String(v).trim().toLowerCase();
+  if (["false", "0", "no", "off"].includes(s)) return false;
+  if (["true", "1", "yes", "on"].includes(s)) return true;
+  return defaultVal;
+}
+
 // Chuẩn hoá compatible_models (nhận array | JSON string | CSV string)
 function normalizeCompatibleModels(input) {
   if (input == null) return null;
