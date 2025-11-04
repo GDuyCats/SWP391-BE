@@ -75,7 +75,6 @@ function normalizeCompatibleModels(input) {
   return null;
 }
 
-
 // ======================================================
 // CREATE POST (chỉ tạo; CHƯA hiển thị, CHƯA VIP)
 // ======================================================
@@ -153,7 +152,7 @@ export const createMyPost = async (req, res) => {
       if (!brand?.trim() || !model?.trim())
         return res.status(400).json({ message: "Xe điện cần có brand và model" });
 
-      const hb = hasBattery !== false; // mặc định true nếu không gửi
+      const hb = toBool(hasBattery, true); // ép "false" -> false, "0" -> false ...
       if (hb) {
         const missingFields = [];
         if (!battery_brand?.trim()) missingFields.push("battery_brand");
@@ -202,7 +201,7 @@ export const createMyPost = async (req, res) => {
 
     // ==== Tạo chi tiết theo category ====
     if (finalCategory === "vehicle") {
-      const hb = hasBattery !== false;
+      const hb = toBool(hasBattery, true);
       await VehicleDetailModel.create(
         {
           postId: post.id,
@@ -383,8 +382,8 @@ export const updateMyPost = async (req, res) => {
       if (mileage !== undefined) vd.mileage = mileage ? Number(mileage) : null;
       if (condition !== undefined) vd.condition = condition ?? null;
 
-      const hb = hasBattery !== undefined ? hasBattery : undefined;
-      const useBattery = hb === undefined ? true : hb;
+      const hasBatteryWasSent = Object.prototype.hasOwnProperty.call(req.body, "hasBattery");
+      const useBattery = hasBatteryWasSent ? toBool(hasBattery, true) : true;
       if (useBattery) {
         if (battery_brand !== undefined) vd.battery_brand = battery_brand ?? null;
         if (battery_model !== undefined) vd.battery_model = battery_model ?? null;
