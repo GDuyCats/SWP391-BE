@@ -1,7 +1,7 @@
 // controller/contract.controller.js
 import { ContractModel, PostModel, UserModel } from "../postgres/postgres.js";
 import Mail from "../utils/mailer.js";
-
+import { Op } from "sequelize";
 const gen6 = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 export const createPurchaseRequest = async (req, res) => {
@@ -861,6 +861,152 @@ export const sendDraftContractToParties = async (req, res) => {
     });
   } catch (err) {
     console.error("[contracts/sendDraft] error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+export const listMyUnsignedContracts = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user?.id) return res.status(401).json({ message: "Missing auth payload" });
+
+    const side = (req.query.side || "").toLowerCase(); // optional: buyer|seller
+    const whereSide =
+      side === "buyer"
+        ? { buyerId: user.id }
+        : side === "seller"
+        ? { sellerId: user.id }
+        : { [Op.or]: [{ buyerId: user.id }, { sellerId: user.id }] };
+
+    // Hợp đồng chưa ký xong: chưa vào 'signed'/'completed'/'cancelled'
+    const contracts = await ContractModel.findAll({
+      where: {
+        ...whereSide,
+        status: ["pending", "negotiating", "awaiting_sign"], // còn đang mở & chưa ký đủ
+      },
+      order: [["createdAt", "DESC"]],
+      include: [
+        { model: PostModel, attributes: ["id", "title", "category", "price", "userId"] },
+        { model: UserModel, as: "buyer", attributes: ["id", "username", "email"] },
+        { model: UserModel, as: "seller", attributes: ["id", "username", "email"] },
+        { model: UserModel, as: "staff", attributes: ["id", "username", "email"] },
+      ],
+    });
+
+    const sanitized = contracts.map((c) => {
+      const data = c.toJSON();
+
+      // Xác định mình là phía nào
+      const side = data.buyerId === user.id ? "buyer" : "seller";
+
+      // Không trả OTP
+      delete data.buyerOtp;
+      delete data.sellerOtp;
+
+      // Tính phí theo góc nhìn người xem
+      if (side === "buyer") {
+        delete data.sellerFeePercent;
+        data.viewerFeePercent = data.buyerFeePercent ?? 0;
+        data.viewerFeeAmount =
+          data.agreedPrice != null && data.buyerFeePercent != null
+            ? Math.round((data.agreedPrice * data.buyerFeePercent) / 100)
+            : null;
+      } else {
+        delete data.buyerFeePercent;
+        data.viewerFeePercent = data.sellerFeePercent ?? 0;
+        data.viewerFeeAmount =
+          data.agreedPrice != null && data.sellerFeePercent != null
+            ? Math.round((data.agreedPrice * data.sellerFeePercent) / 100)
+            : null;
+      }
+
+      return { side, ...data };
+    });
+
+    res.set("Cache-Control", "no-store");
+    return res.status(200).json({
+      viewerRole: "user",
+      filter: "unsigned",
+      total: sanitized.length,
+      contracts: sanitized,
+    });
+  } catch (err) {
+    console.error("[contracts/listMyUnsignedContracts] error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const listMyContracts = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user?.id) return res.status(401).json({ message: "Missing auth payload" });
+
+    const side = (req.query.side || "").toLowerCase(); // optional: buyer|seller
+    const whereSide =
+      side === "buyer"
+        ? { buyerId: user.id }
+        : side === "seller"
+        ? { sellerId: user.id }
+        : { [Op.or]: [{ buyerId: user.id }, { sellerId: user.id }] };
+
+    const contracts = await ContractModel.findAll({
+      where: whereSide,
+      order: [["createdAt", "DESC"]],
+      include: [
+        { model: PostModel, attributes: ["id", "title", "category", "price", "userId"] },
+        { model: UserModel, as: "buyer", attributes: ["id", "username", "email"] },
+        { model: UserModel, as: "seller", attributes: ["id", "username", "email"] },
+        { model: UserModel, as: "staff", attributes: ["id", "username", "email"] },
+      ],
+    });
+
+    const sanitized = contracts.map((c) => {
+      const data = c.toJSON();
+
+      // Không trả OTP
+      delete data.buyerOtp;
+      delete data.sellerOtp;
+
+      // Xác định mình là phía nào
+      const side = data.buyerId === user.id ? "buyer" : "seller";
+
+      // Tính phí theo góc nhìn người xem
+      if (side === "buyer") {
+        delete data.sellerFeePercent;
+        data.viewerFeePercent = data.buyerFeePercent ?? 0;
+        data.viewerFeeAmount =
+          data.agreedPrice != null && data.buyerFeePercent != null
+            ? Math.round((data.agreedPrice * data.buyerFeePercent) / 100)
+            : null;
+      } else {
+        delete data.buyerFeePercent;
+        data.viewerFeePercent = data.sellerFeePercent ?? 0;
+        data.viewerFeeAmount =
+          data.agreedPrice != null && data.sellerFeePercent != null
+            ? Math.round((data.agreedPrice * data.sellerFeePercent) / 100)
+            : null;
+      }
+
+      // Bonus: tính luôn breakdown đầy đủ (ẩn theo góc nhìn vẫn giữ viewerFee*)
+      data.buyerFeeAmount =
+        data.agreedPrice != null && data.buyerFeePercent != null
+          ? Math.round((data.agreedPrice * data.buyerFeePercent) / 100)
+          : null;
+      data.sellerFeeAmount =
+        data.agreedPrice != null && data.sellerFeePercent != null
+          ? Math.round((data.agreedPrice * data.sellerFeePercent) / 100)
+          : null;
+
+      return { side, ...data };
+    });
+
+    res.set("Cache-Control", "no-store");
+    return res.status(200).json({
+      viewerRole: "user",
+      total: sanitized.length,
+      contracts: sanitized,
+    });
+  } catch (err) {
+    console.error("[contracts/listMyContracts] error:", err);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
