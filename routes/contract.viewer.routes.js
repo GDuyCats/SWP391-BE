@@ -88,7 +88,7 @@ const router = Router();
  *           application/json:
  *             example: { message: "Internal server error" }
  */
-router.get("/me/contracts", authenticateToken, isCustomer, listMyContracts);
+router.get("/contracts", authenticateToken, isCustomer, listMyContracts);
 
 /**
  * @swagger
@@ -165,7 +165,7 @@ router.get("/me/contracts", authenticateToken, isCustomer, listMyContracts);
  *             example: { message: "Internal server error" }
  */
 router.get(
-  "/me/contracts/unsigned",
+  "/contracts/unsigned",
   authenticateToken,
   isCustomer,
   listMyUnsignedContracts
@@ -249,6 +249,6 @@ router.get(
  *           application/json:
  *             example: { message: "Internal server error" }
  */
-router.get("/me/contracts/:id", authenticateToken, isCustomer, getContractForViewer);
+router.get("/contracts/:id", authenticateToken, isCustomer, getContractForViewer);
 
 export default router;
