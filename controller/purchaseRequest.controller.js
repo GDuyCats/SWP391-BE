@@ -52,41 +52,82 @@ export const createPurchaseRequest = async (req, res) => {
 export const acceptPurchaseRequest = async (req, res) => {
   try {
     const actor = req.user;
-    const { id } = req.params;
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ message: "Invalid id" });
+    }
 
-    const request = await PurchaseRequestModel.findByPk(id);
-    if (!request) return res.status(404).json({ message: "Purchase request not found" });
+    const result = await sequelize.transaction(async (t) => {
+      // 1) Khóa bản ghi yêu cầu để tránh accept trùng
+      const request = await PurchaseRequestModel.findByPk(id, {
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (!request) {
+        return { code: 404, body: { message: "Purchase request not found" } };
+      }
 
-    // // Role check
-    // const isAdmin = actor.role === "admin";
-    // const isSeller = actor.id === request.sellerId;
-    // const isStaff = actor.role === "staff";
+      if (request.status !== "pending") {
+        return {
+          code: 400,
+          body: { message: `Cannot accept a ${request.status} request` },
+        };
+      }
 
-    // if (!(isAdmin || isSeller || isStaff))
-    //   return res.status(403).json({ message: "You are not allowed to accept this request" });
+      // 2) Lấy bài post để biết category (vehicle/battery)
+      const post = await PostModel.findByPk(request.postId, {
+        attributes: ["id", "category", "verifyStatus", "isActive"],
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (!post) {
+        return { code: 409, body: { message: "Related post not found" } };
+      }
 
-    if (request.status !== "pending")
-      return res.status(400).json({ message: `Cannot accept a ${request.status} request` });
+      // (tùy bạn, có thể giữ/bỏ 2 điều kiện dưới)
+      if (post.verifyStatus !== "verified" || !post.isActive) {
+        return {
+          code: 409,
+          body: { message: "Post is not eligible (must be verified & active)." },
+        };
+      }
 
-    // Cập nhật trạng thái request
-    request.status = "accepted";
-    request.handledBy = actor.id;
-    await request.save();
+      // 3) Cập nhật trạng thái request -> accepted
+      request.status = "accepted";
+      request.handledBy = actor?.id ?? null;
+      await request.save({ transaction: t });
 
-    // Tạo contract tương ứng
-    const contract = await ContractModel.create({
-      requestId: request.id,
-      buyerId: request.buyerId,
-      sellerId: request.sellerId,
-      postId: request.postId,
-      status: "pending",
-      notes: request.message || null,
+      // 4) Chỉ tạo contract nếu là VEHICLE
+      let contract = null;
+      if (post.category === "vehicle") {
+        contract = await ContractModel.create(
+          {
+            requestId: request.id,
+            buyerId: request.buyerId,
+            sellerId: request.sellerId,
+            postId: request.postId,
+            status: "pending",
+            notes: request.message || null,
+          },
+          { transaction: t }
+        );
+      }
+
+      // 5) Trả kết quả phù hợp theo category
+      return {
+        code: 200,
+        body: {
+          message:
+            post.category === "vehicle"
+              ? "Purchase request accepted, contract created"
+              : "Purchase request accepted (no contract required for this category)",
+          contract, // sẽ là null nếu category != vehicle (vd: battery)
+          purchaseRequest: request,
+        },
+      };
     });
 
-    return res.status(200).json({
-      message: "Purchase request accepted, contract created",
-      contract,
-    });
+    return res.status(result.code).json(result.body);
   } catch (err) {
     console.error("[purchaseRequests/accept] error:", err);
     return res.status(500).json({ message: "Internal server error" });
@@ -280,8 +321,6 @@ export const adminListPurchaseRequests = async (req, res) => {
   try {
     const actor = req.user;
     if (!actor?.id) return res.status(401).json({ message: "Missing auth payload" });
-    if (actor.role !== "admin") return res.status(403).json({ message: "Admin only" });
-
     const {
       status,
       postId,
@@ -334,6 +373,85 @@ export const adminListPurchaseRequests = async (req, res) => {
     });
   } catch (err) {
     console.error("[purchaseRequests/adminList] error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+export const listVehiclePurchaseRequests = async (req, res) => {
+  try {
+    const {
+      status, buyerId, sellerId,
+      page = "1", pageSize = "10",
+      sort = "createdAt:desc",
+    } = req.query;
+
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const sizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 10, 1), 100);
+    const offset = (pageNum - 1) * sizeNum;
+
+    const where = {};
+    if (status) where.status = status;
+    if (buyerId) where.buyerId = Number(buyerId);
+    if (sellerId) where.sellerId = Number(sellerId);
+
+    const [field, dir] = String(sort).split(":");
+    const order = [[field || "createdAt", (dir || "desc").toUpperCase()]];
+
+    const result = await PurchaseRequestModel.findAndCountAll({
+      where,
+      include: [
+        {
+          model: PostModel,
+          attributes: ["id", "title", "category", "price", "verifyStatus", "isActive"],
+          where: { category: "vehicle" }, // 🔴 chỉ xe
+          required: true,
+        },
+        { model: UserModel, as: "buyer", attributes: ["id", "username", "email"] },
+        { model: UserModel, as: "seller", attributes: ["id", "username", "email"] },
+      ],
+      attributes: ["id", "buyerId", "sellerId", "postId", "status", "handledBy", "createdAt"],
+      order,
+      limit: sizeNum,
+      offset,
+      distinct: true, // đếm đúng khi có JOIN
+    });
+
+    return res.status(200).json({
+      total: result.count,
+      page: pageNum,
+      pageSize: sizeNum,
+      items: result.rows,
+    });
+  } catch (err) {
+    console.error("[admin list vehicle PR] error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+export const getPurchaseRequestDetail = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ message: "Invalid id" });
+
+    const pr = await PurchaseRequestModel.findByPk(id, {
+      include: [
+        {
+          model: PostModel,
+          attributes: ["id", "title", "category", "price", "verifyStatus", "isActive"],
+          required: true,
+        },
+        { model: UserModel, as: "buyer", attributes: ["id", "username", "email"] },
+        { model: UserModel, as: "seller", attributes: ["id", "username", "email"] },
+      ],
+    });
+    if (!pr) return res.status(404).json({ message: "Purchase request not found" });
+
+    // 🔴 Chỉ cho xem nếu là xe
+    if (pr.Post?.category !== "vehicle") {
+      return res.status(404).json({ message: "Purchase request not found" });
+    }
+
+    return res.status(200).json(pr);
+  } catch (err) {
+    console.error("[admin get PR detail] error:", err);
     return res.status(500).json({ message: "Internal server error" });
   }
 };

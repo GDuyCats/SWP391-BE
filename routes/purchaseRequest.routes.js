@@ -9,11 +9,12 @@ import {
   listMyPurchaseRequests,
   getPurchaseRequestById,
   adminListPurchaseRequests,
+  listVehiclePurchaseRequests
 } from "../controller/purchaseRequest.controller.js";
 import isCustomer from "../middleware/isCustomer.js";
 import isAdmin from "../middleware/isAdmin.js";
 import isCustomerOrAdmin from "../middleware/isCustomerAndAdmin.js";
-
+import isStaffOrAdmin from "../middleware/isStaffAndAdmin.js"
 const router = Router();
 
 /**
@@ -291,6 +292,93 @@ router.get("/me", authenticateToken,isCustomer, listMyPurchaseRequests);
  */
 router.get("/:id", authenticateToken, getPurchaseRequestById);
 
+/**
+ * @openapi
+ * /PurchaseRequests/vehicle-purchase-requests:
+ *   get:
+ *     tags: [Purchase Requests]
+ *     summary: Staff/Admin xem các yêu cầu MUA XE (post.category = "vehicle")
+ *     description: |
+ *       - Trả về **chỉ** các purchase request gắn với bài đăng có `category = "vehicle"`.
+ *       - Hỗ trợ lọc theo `status`, `buyerId`, `sellerId`, phân trang và sắp xếp.
+ *       - Yêu cầu quyền: **Staff** hoặc **Admin**.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         description: Lọc theo trạng thái yêu cầu
+ *         schema:
+ *           type: string
+ *           enum: [pending, accepted, rejected, withdrawn, expired]
+ *       - in: query
+ *         name: buyerId
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: sellerId
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, minimum: 1, default: 1 }
+ *       - in: query
+ *         name: pageSize
+ *         schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+ *       - in: query
+ *         name: sort
+ *         description: Trường sắp xếp, dạng `field:direction` (ví dụ: `createdAt:desc`)
+ *         schema:
+ *           type: string
+ *           example: createdAt:desc
+ *     responses:
+ *       200:
+ *         description: Danh sách request của bài đăng **vehicle**
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 total:    { type: integer, example: 37 }
+ *                 page:     { type: integer, example: 1 }
+ *                 pageSize: { type: integer, example: 10 }
+ *                 items:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:        { type: integer, example: 123 }
+ *                       buyerId:   { type: integer, example: 25 }
+ *                       sellerId:  { type: integer, example: 26 }
+ *                       postId:    { type: integer, example: 55 }
+ *                       status:    { type: string, enum: [pending, accepted, rejected, withdrawn, expired], example: pending }
+ *                       handledBy: { type: integer, nullable: true, example: 10 }
+ *                       createdAt: { type: string, format: date-time, example: "2025-11-03T04:02:08.202Z" }
+ *                       Post:
+ *                         type: object
+ *                         properties:
+ *                           id:         { type: integer, example: 55 }
+ *                           title:      { type: string, example: "Bán xe" }
+ *                           category:   { type: string, example: "vehicle" }
+ *                           price:      { type: number, format: float, example: 272500.00 }
+ *                           verifyStatus: { type: string, example: "verified" }
+ *                           isActive:   { type: boolean, example: true }
+ *                       buyer:
+ *                         type: object
+ *                         properties:
+ *                           id:       { type: integer, example: 25 }
+ *                           username: { type: string, example: "bao" }
+ *                           email:    { type: string, example: "bao@gmail.com" }
+ *                       seller:
+ *                         type: object
+ *                         properties:
+ *                           id:       { type: integer, example: 26 }
+ *                           username: { type: string, example: "phuong" }
+ *                           email:    { type: string, example: "phuong@gmail.com" }
+ *       403:
+ *         description: Chỉ Staff/Admin được phép truy cập
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/vehicle-purchase-requests", authenticateToken,  isStaffOrAdmin, listVehiclePurchaseRequests);
 
 
 export default router;
