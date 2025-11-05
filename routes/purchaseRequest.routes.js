@@ -9,20 +9,22 @@ import {
   listMyPurchaseRequests,
   getPurchaseRequestById,
   adminListPurchaseRequests,
-  listVehiclePurchaseRequests
+  listVehiclePurchaseRequests,
 } from "../controller/purchaseRequest.controller.js";
 import isCustomer from "../middleware/isCustomer.js";
 import isAdmin from "../middleware/isAdmin.js";
 import isCustomerOrAdmin from "../middleware/isCustomerAndAdmin.js";
-import isStaffOrAdmin from "../middleware/isStaffAndAdmin.js"
+import isStaffOrAdmin from "../middleware/isStaffAndAdmin.js";
+
 const router = Router();
 
 /**
  * @openapi
  * tags:
  *   - name: Purchase Requests
- *     description: API quản lý yêu cầu mua xe giữa Buyer – Seller – Staff – Admin
+ *     description: API quản lý yêu cầu mua giữa Buyer – Seller – Staff – Admin
  */
+
 /**
  * @openapi
  * /PurchaseRequests/admin:
@@ -71,6 +73,7 @@ const router = Router();
  *         description: Internal server error
  */
 router.get("/admin", authenticateToken, isAdmin, adminListPurchaseRequests);
+
 /**
  * @openapi
  * /PurchaseRequests:
@@ -104,7 +107,7 @@ router.get("/admin", authenticateToken, isAdmin, adminListPurchaseRequests);
  *       500:
  *         description: Internal server error
  */
-router.post("/", authenticateToken,isCustomer, createPurchaseRequest);
+router.post("/", authenticateToken, isCustomer, createPurchaseRequest);
 
 /**
  * @openapi
@@ -122,7 +125,6 @@ router.post("/", authenticateToken,isCustomer, createPurchaseRequest);
  *         name: id
  *         required: true
  *         schema: { type: integer }
- *         description: ID của purchase request
  *     responses:
  *       200:
  *         description: Accepted and contract created
@@ -151,7 +153,6 @@ router.patch("/:id/accept", authenticateToken, isAdmin, acceptPurchaseRequest);
  *         name: id
  *         required: true
  *         schema: { type: integer }
- *         description: ID của purchase request
  *     requestBody:
  *       content:
  *         application/json:
@@ -187,7 +188,6 @@ router.patch("/:id/reject", authenticateToken, isCustomerOrAdmin, rejectPurchase
  *         name: id
  *         required: true
  *         schema: { type: integer }
- *         description: ID của purchase request
  *     responses:
  *       200:
  *         description: Withdrawn successfully
@@ -248,12 +248,6 @@ router.get("/post/:postId", authenticateToken, isCustomerOrAdmin, listPurchaseRe
  *       - in: query
  *         name: postId
  *         schema: { type: integer }
- *       - in: query
- *         name: page
- *         schema: { type: integer, example: 1 }
- *       - in: query
- *         name: pageSize
- *         schema: { type: integer, example: 10 }
  *     responses:
  *       200:
  *         description: Danh sách request của buyer
@@ -262,7 +256,7 @@ router.get("/post/:postId", authenticateToken, isCustomerOrAdmin, listPurchaseRe
  *       500:
  *         description: Internal server error
  */
-router.get("/me", authenticateToken,isCustomer, listMyPurchaseRequests);
+router.get("/me", authenticateToken, isCustomer, listMyPurchaseRequests);
 
 /**
  * @openapi
@@ -332,53 +326,11 @@ router.get("/:id", authenticateToken, getPurchaseRequestById);
  *     responses:
  *       200:
  *         description: Danh sách request của bài đăng **vehicle**
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 total:    { type: integer, example: 37 }
- *                 page:     { type: integer, example: 1 }
- *                 pageSize: { type: integer, example: 10 }
- *                 items:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:        { type: integer, example: 123 }
- *                       buyerId:   { type: integer, example: 25 }
- *                       sellerId:  { type: integer, example: 26 }
- *                       postId:    { type: integer, example: 55 }
- *                       status:    { type: string, enum: [pending, accepted, rejected, withdrawn, expired], example: pending }
- *                       handledBy: { type: integer, nullable: true, example: 10 }
- *                       createdAt: { type: string, format: date-time, example: "2025-11-03T04:02:08.202Z" }
- *                       Post:
- *                         type: object
- *                         properties:
- *                           id:         { type: integer, example: 55 }
- *                           title:      { type: string, example: "Bán xe" }
- *                           category:   { type: string, example: "vehicle" }
- *                           price:      { type: number, format: float, example: 272500.00 }
- *                           verifyStatus: { type: string, example: "verified" }
- *                           isActive:   { type: boolean, example: true }
- *                       buyer:
- *                         type: object
- *                         properties:
- *                           id:       { type: integer, example: 25 }
- *                           username: { type: string, example: "bao" }
- *                           email:    { type: string, example: "bao@gmail.com" }
- *                       seller:
- *                         type: object
- *                         properties:
- *                           id:       { type: integer, example: 26 }
- *                           username: { type: string, example: "phuong" }
- *                           email:    { type: string, example: "phuong@gmail.com" }
  *       403:
  *         description: Chỉ Staff/Admin được phép truy cập
  *       500:
  *         description: Internal server error
  */
-router.get("/vehicle-purchase-requests", authenticateToken,  isStaffOrAdmin, listVehiclePurchaseRequests);
-
+router.get("/vehicle-purchase-requests", authenticateToken, isStaffOrAdmin, listVehiclePurchaseRequests);
 
 export default router;
