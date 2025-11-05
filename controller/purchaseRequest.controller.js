@@ -455,3 +455,53 @@ export const getPurchaseRequestDetail = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+// 📦 LIST MY BATTERY PURCHASE REQUESTS (buyer chỉ thấy request của chính mình; Post.category = "battery")
+export const listMyBatteryPurchaseRequests = async (req, res) => {
+  try {
+    const actor = req.user;
+    const {
+      status,
+      page = "1",
+      pageSize = "10",
+      sort = "createdAt:desc",
+    } = req.query;
+
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const sizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 10, 1), 100);
+    const offset = (pageNum - 1) * sizeNum;
+
+    const [field, dir] = String(sort).split(":");
+    const order = [[field || "createdAt", (dir || "desc").toUpperCase()]];
+
+    const where = { buyerId: actor.id }; // 🔒 chỉ request của chính user
+    if (status) where.status = status;
+
+    const result = await PurchaseRequestModel.findAndCountAll({
+      where,
+      include: [
+        {
+          model: PostModel,
+          attributes: ["id", "title", "category", "price", "verifyStatus", "isActive"],
+          where: { category: "battery" }, // 🔴 chỉ PIN
+          required: true,
+        },
+        { model: UserModel, as: "seller", attributes: ["id", "username", "email"] },
+      ],
+      attributes: ["id", "buyerId", "sellerId", "postId", "status", "handledBy", "createdAt"],
+      order,
+      limit: sizeNum,
+      offset,
+      distinct: true,
+    });
+
+    return res.status(200).json({
+      total: result.count,
+      page: pageNum,
+      pageSize: sizeNum,
+      items: result.rows,
+    });
+  } catch (err) {
+    console.error("[listMyBatteryPurchaseRequests] error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};

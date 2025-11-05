@@ -10,6 +10,7 @@ import {
   getPurchaseRequestById,
   adminListPurchaseRequests,
   listVehiclePurchaseRequests,
+  listMyBatteryPurchaseRequests
 } from "../controller/purchaseRequest.controller.js";
 import isCustomer from "../middleware/isCustomer.js";
 import isAdmin from "../middleware/isAdmin.js";
@@ -115,6 +116,38 @@ router.get("/admin", authenticateToken, isAdmin, adminListPurchaseRequests);
  *         description: Internal Server Error
  */
 router.get("/vehicle-purchase-requests", authenticateToken, isStaffOrAdmin, listVehiclePurchaseRequests);
+/**
+ * @openapi
+ * /PurchaseRequests/battery-purchase-request:
+ *   get:
+ *     tags: [Purchase Requests]
+ *     summary: Buyer xem các yêu cầu MUA PIN của chính mình (post.category = "battery")
+ *     description: Chỉ trả về các purchase request do user gửi và gắn với bài đăng PIN.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, accepted, rejected, withdrawn, expired]
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, minimum: 1, default: 1 }
+ *       - in: query
+ *         name: pageSize
+ *         schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           example: createdAt:desc
+ *     responses:
+ *       200: { description: OK }
+ *       401: { description: Unauthorized }
+ *       500: { description: Internal Server Error }
+ */
+router.get("/battery-purchase-request", authenticateToken, isCustomer, listMyBatteryPurchaseRequests);
 
 /**
  * @openapi
