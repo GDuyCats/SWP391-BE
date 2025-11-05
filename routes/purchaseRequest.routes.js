@@ -76,6 +76,48 @@ router.get("/admin", authenticateToken, isAdmin, adminListPurchaseRequests);
 
 /**
  * @openapi
+ * /PurchaseRequests/vehicle-purchase-requests:
+ *   get:
+ *     tags: [Purchase Requests]
+ *     summary: Staff/Admin xem các yêu cầu MUA XE (category = vehicle)
+ *     description: Chỉ trả về các purchase request gắn với post.category = "vehicle".
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, accepted, rejected, withdrawn, expired]
+ *       - in: query
+ *         name: buyerId
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: sellerId
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, minimum: 1, default: 1 }
+ *       - in: query
+ *         name: pageSize
+ *         schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           example: createdAt:desc
+ *     responses:
+ *       200:
+ *         description: OK
+ *       403:
+ *         description: Forbidden
+ *       500:
+ *         description: Internal Server Error
+ */
+router.get("/vehicle-purchase-requests", authenticateToken, isStaffOrAdmin, listVehiclePurchaseRequests);
+
+/**
+ * @openapi
  * /PurchaseRequests:
  *   post:
  *     tags: [Purchase Requests]
@@ -230,6 +272,7 @@ router.patch("/:id/withdraw", authenticateToken, isCustomer, withdrawPurchaseReq
  */
 router.get("/post/:postId", authenticateToken, isCustomerOrAdmin, listPurchaseRequestsByPost);
 
+
 /**
  * @openapi
  * /PurchaseRequests/me:
@@ -285,52 +328,5 @@ router.get("/me", authenticateToken, isCustomer, listMyPurchaseRequests);
  *         description: Internal server error
  */
 router.get("/:id", authenticateToken, getPurchaseRequestById);
-
-/**
- * @openapi
- * /PurchaseRequests/vehicle-purchase-requests:
- *   get:
- *     tags: [Purchase Requests]
- *     summary: Staff/Admin xem các yêu cầu MUA XE (post.category = "vehicle")
- *     description: |
- *       - Trả về **chỉ** các purchase request gắn với bài đăng có `category = "vehicle"`.
- *       - Hỗ trợ lọc theo `status`, `buyerId`, `sellerId`, phân trang và sắp xếp.
- *       - Yêu cầu quyền: **Staff** hoặc **Admin**.
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: status
- *         description: Lọc theo trạng thái yêu cầu
- *         schema:
- *           type: string
- *           enum: [pending, accepted, rejected, withdrawn, expired]
- *       - in: query
- *         name: buyerId
- *         schema: { type: integer }
- *       - in: query
- *         name: sellerId
- *         schema: { type: integer }
- *       - in: query
- *         name: page
- *         schema: { type: integer, minimum: 1, default: 1 }
- *       - in: query
- *         name: pageSize
- *         schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
- *       - in: query
- *         name: sort
- *         description: Trường sắp xếp, dạng `field:direction` (ví dụ: `createdAt:desc`)
- *         schema:
- *           type: string
- *           example: createdAt:desc
- *     responses:
- *       200:
- *         description: Danh sách request của bài đăng **vehicle**
- *       403:
- *         description: Chỉ Staff/Admin được phép truy cập
- *       500:
- *         description: Internal server error
- */
-router.get("/vehicle-purchase-requests", authenticateToken, isStaffOrAdmin, listVehiclePurchaseRequests);
 
 export default router;
