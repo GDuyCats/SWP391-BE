@@ -3,7 +3,7 @@ import { Router } from "express";
 import authenticateToken from "../middleware/authenticateToken.js";
 import { sendContractOtp, verifyContractOtp } from "../controller/contract.controller.js";
 import isStaff from "../middleware/isStaff.js";
-
+import isCustomer from "../middleware/isCustomer.js"
 const router = Router();
 /**
  * @swagger
@@ -186,6 +186,6 @@ const router = Router();
 router.post("/staff/contracts/send-otp",authenticateToken ,isStaff , sendContractOtp);
 
 // Buyer/Seller xác nhận OTP
-router.post("/contracts/verify-otp",authenticateToken ,isStaff , verifyContractOtp);
+router.post("/contracts/verify-otp",authenticateToken ,isCustomer, verifyContractOtp);
 
 export default router;
