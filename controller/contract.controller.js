@@ -763,13 +763,6 @@ export const sendDraftContractToParties = async (req, res) => {
     const staff = req.user;
     const { contractId } = req.body;
 
-    // 1️⃣ Kiểm tra quyền
-    if (!staff?.id) {
-      return res.status(401).json({ message: "Missing auth payload" });
-    }
-    if (staff.role !== "staff") {
-      return res.status(403).json({ message: "Only staff can send draft contracts" });
-    }
     if (!contractId) {
       return res.status(400).json({ message: "contractId is required" });
     }
@@ -780,15 +773,10 @@ export const sendDraftContractToParties = async (req, res) => {
       return res.status(404).json({ message: "Contract not found" });
     }
 
-    // 3️⃣ Xác thực staff phụ trách
-    if (contract.staffId !== staff.id) {
-      return res.status(403).json({ message: "You are not assigned to this contract" });
-    }
-
-    // 4️⃣ Chỉ cho phép gửi khi đang ở giai đoạn thương lượng xong (pending hoặc negotiating)
-    if (!["pending", "negotiating"].includes(contract.status)) {
+    // 4️⃣ Chỉ cho phép gửi khi đang ở trạng thái 'awaiting_sign'
+    if (contract.status !== "awaiting_sign") {
       return res.status(400).json({
-        message: "Contract must be in 'pending' or 'negotiating' state to send draft",
+        message: "Contract must be in 'awaiting_sign' state to send draft",
       });
     }
 
@@ -844,16 +832,10 @@ export const sendDraftContractToParties = async (req, res) => {
 
     await Promise.all([mailToBuyer.send(), mailToSeller.send()]);
 
-    // 8️⃣ Cập nhật trạng thái nếu đang "negotiating" → "awaiting_sign"
-    if (contract.status === "negotiating") {
-      contract.status = "awaiting_sign";
-      await contract.save();
-    }
-
     res.set("Cache-Control", "no-store");
     return res.status(200).json({
       message: "Draft contract sent to buyer and seller successfully.",
-      nextStatus: contract.status,
+      status: contract.status,
       sentTo: {
         buyerEmail: buyer.email,
         sellerEmail: seller.email,
@@ -864,6 +846,7 @@ export const sendDraftContractToParties = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
 export const listMyUnsignedContracts = async (req, res) => {
   try {
     const user = req.user;
