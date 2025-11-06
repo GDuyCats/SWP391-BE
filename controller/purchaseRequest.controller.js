@@ -1,3 +1,4 @@
+ import { sequelize } from "../postgres/postgres.js";
  import { PurchaseRequestModel, PostModel, UserModel, ContractModel } from "../postgres/postgres.js";
 /**
  * Buyer gửi yêu cầu mua (Bước 1)

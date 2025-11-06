@@ -440,15 +440,18 @@ export const deleteMyPost = async (req, res) => {
   try {
     const userId = req.user?.id;
     const { id } = req.params;
-    if (!userId) return res.status(401).json({ message: "Chưa đăng nhập" });
+
+    if (!userId) 
+      return res.status(401).json({ message: "Chưa đăng nhập" });
 
     const post = await PostModel.findByPk(id);
-    if (!post) return res.status(404).json({ message: "Không tìm thấy post" });
-    if (post.userId !== userId)
-      return res.status(403).json({ message: "Bạn không có quyền xoá post này" });
+    if (!post) 
+      return res.status(404).json({ message: "Không tìm thấy post" });
 
-    await post.destroy();
-    return res.status(200).json({ message: "Xoá post thành công" });
+    // ✅ Thay vì xoá, chỉ cập nhật isActive = false
+    await post.update({ isActive: false });
+
+    return res.status(200).json({ message: "Đã ẩn post thành công" });
   } catch (err) {
     console.error("deleteMyPost error:", err);
     return res.status(500).json({ message: "Internal Server Error" });
