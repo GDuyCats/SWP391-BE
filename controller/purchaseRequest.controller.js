@@ -86,7 +86,7 @@ export const acceptPurchaseRequest = async (req, res) => {
       }
 
       // (tùy bạn, có thể giữ/bỏ 2 điều kiện dưới)
-      if (post.verifyStatus !== "verified" || !post.isActive) {
+      if (post.verifyStatus !== "verify" || !post.isActive) {
         return {
           code: 409,
           body: { message: "Post is not eligible (must be verified & active)." },
