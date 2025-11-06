@@ -18,8 +18,8 @@ export const createPurchaseRequest = async (req, res) => {
     if (sellerId === buyerId)
       return res.status(400).json({ message: "You cannot send a request to your own post" });
 
-    if (post.category === "battery")
-      return res.status(400).json({ message: "Purchase requests are only allowed for vehicles" });
+    // if (post.category === "battery")
+    //   return res.status(400).json({ message: "Purchase requests are only allowed for vehicles" });
 
     // Kiểm tra trùng yêu cầu
     const existed = await PurchaseRequestModel.findOne({
