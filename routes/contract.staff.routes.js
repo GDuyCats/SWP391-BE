@@ -1,3 +1,4 @@
+// routes/staff.contract.routes.js
 import { Router } from "express";
 import authenticateToken from "../middleware/authenticateToken.js";
 import {
@@ -5,7 +6,7 @@ import {
   finalizeNegotiation,
   listStaffContracts,
   sendFinalContractToParties,
-  sendDraftContractToParties, // ✅ thêm
+  sendDraftContractToParties,
 } from "../controller/contract.controller.js";
 import isStaff from "../middleware/isStaff.js";
 
@@ -17,7 +18,7 @@ const router = Router();
  *   post:
  *     summary: Staff ghi nhận lịch hẹn giữa buyer và seller
  *     description: >
- *       Staff tạo lịch hẹn xem xe hoặc gặp mặt cho hợp đồng đang ở trạng thái **pending** hoặc **negotiating**.
+ *       Staff tạo lịch hẹn xem xe hoặc gặp mặt cho hợp đồng đang ở trạng thái **pending** hoặc **negotiating**.  
  *       Lưu thông tin thời gian, địa điểm và ghi chú vào contract.
  *     tags: [Contracts - Staff]
  *     security:
@@ -65,8 +66,8 @@ const router = Router();
  *   post:
  *     summary: Staff chốt thương lượng và hoàn tất giai đoạn thương lượng
  *     description: >
- *       Staff nhập giá đã thống nhất và phần trăm phí của buyer/seller.
- *       Khi chốt xong, trạng thái contract chuyển sang **awaiting_sign**.
+ *       Staff nhập **giá đã thống nhất** và các **loại phí chi tiết** (nếu có).  
+ *       Khi chốt xong, trạng thái contract chuyển sang **awaiting_sign** để chờ ký OTP.
  *     tags: [Contracts - Staff]
  *     security:
  *       - bearerAuth: []
@@ -86,15 +87,29 @@ const router = Router();
  *               agreedPrice:
  *                 type: number
  *                 example: 425000000
- *               buyerFeePercent:
+ *               brokerageFee:
  *                 type: number
- *                 example: 3
- *               sellerFeePercent:
+ *                 example: 500000
+ *                 description: Phí môi giới giao dịch
+ *               titleTransferFee:
  *                 type: number
- *                 example: 2
- *               notes:
+ *                 example: 200000
+ *                 description: Phí làm hồ sơ sang tên – đăng ký
+ *               legalAndConditionCheckFee:
+ *                 type: number
+ *                 example: 150000
+ *                 description: Phí kiểm tra pháp lý & tình trạng xe
+ *               adminProcessingFee:
+ *                 type: number
+ *                 example: 100000
+ *                 description: Phí xử lý giấy tờ & hành chính
+ *               reinspectionOrRegistrationSupportFee:
+ *                 type: number
+ *                 example: 300000
+ *                 description: Phí kiểm định / hỗ trợ đăng kiểm lại
+ *               note:
  *                 type: string
- *                 example: "Hai bên thống nhất giữ giá 425 triệu."
+ *                 example: "Hai bên thống nhất giữ giá 425 triệu, có hỗ trợ phí sang tên."
  *     responses:
  *       200:
  *         description: Hoàn tất thương lượng thành công
@@ -114,10 +129,9 @@ const router = Router();
  *   post:
  *     summary: Staff gửi hợp đồng dự thảo cho Buyer và Seller để xem trước khi ký
  *     description: >
- *       Staff phụ trách có thể gửi **bản hợp đồng dự thảo** (preview/summary) đến **buyer** và **seller**  
- *       để hai bên kiểm tra nội dung trước khi tiến hành ký OTP.  
- *       Áp dụng khi contract đang ở trạng thái **pending** hoặc **negotiating**.  
- *       Nếu đang **negotiating**, sau khi gửi có thể chuyển sang **awaiting_sign** (đợi ký OTP).
+ *       Staff phụ trách có thể gửi **bản hợp đồng dự thảo (preview)** đến **buyer** và **seller**  
+ *       để hai bên xem và kiểm tra lại nội dung trước khi ký OTP.  
+ *       Áp dụng khi contract đang ở trạng thái **awaiting_sign**.
  *     tags: [Contracts - Staff]
  *     security:
  *       - bearerAuth: []
@@ -144,7 +158,7 @@ const router = Router();
  *                 message:
  *                   type: string
  *                   example: Draft contract sent to buyer and seller successfully.
- *                 nextStatus:
+ *                 status:
  *                   type: string
  *                   example: awaiting_sign
  *                 sentTo:
@@ -236,7 +250,7 @@ router.post("/appointment", authenticateToken, isStaff, recordAppointment);
 // Staff chốt thương lượng
 router.post("/finalize", authenticateToken, isStaff, finalizeNegotiation);
 
-// ✅ Staff gửi hợp đồng dự thảo cho buyer & seller để xem trước khi ký
+// Staff gửi hợp đồng dự thảo cho buyer & seller để xem trước khi ký
 router.post("/send-draft", authenticateToken, isStaff, sendDraftContractToParties);
 
 // Staff gửi hợp đồng cuối cùng cho buyer & seller (chuyển trạng thái -> completed)
