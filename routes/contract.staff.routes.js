@@ -66,7 +66,7 @@ const router = Router();
  *   post:
  *     summary: Staff chốt thương lượng và hoàn tất giai đoạn thương lượng
  *     description: >
- *       Staff nhập **giá đã thống nhất** và các **loại phí chi tiết** (nếu có).  
+ *       Staff nhập **giá đã thống nhất**, các **loại phí chi tiết** (nếu có) và **bên chịu từng loại phí**.  
  *       Khi chốt xong, trạng thái contract chuyển sang **awaiting_sign** để chờ ký OTP.
  *     tags: [Contracts - Staff]
  *     security:
@@ -107,9 +107,33 @@ const router = Router();
  *                 type: number
  *                 example: 300000
  *                 description: Phí kiểm định / hỗ trợ đăng kiểm lại
+ *               feeResponsibility:
+ *                 type: object
+ *                 description: Bên chịu phí cho từng loại (chỉ nhận **buyer** hoặc **seller**)
+ *                 properties:
+ *                   brokerageFee:
+ *                     type: string
+ *                     enum: [buyer, seller]
+ *                     example: seller
+ *                   titleTransferFee:
+ *                     type: string
+ *                     enum: [buyer, seller]
+ *                     example: buyer
+ *                   legalAndConditionCheckFee:
+ *                     type: string
+ *                     enum: [buyer, seller]
+ *                     example: buyer
+ *                   adminProcessingFee:
+ *                     type: string
+ *                     enum: [buyer, seller]
+ *                     example: seller
+ *                   reinspectionOrRegistrationSupportFee:
+ *                     type: string
+ *                     enum: [buyer, seller]
+ *                     example: seller
  *               note:
  *                 type: string
- *                 example: "Hai bên thống nhất giữ giá 425 triệu, có hỗ trợ phí sang tên."
+ *                 example: "Hai bên thống nhất giữ giá 425 triệu, phí môi giới do người bán chịu."
  *     responses:
  *       200:
  *         description: Hoàn tất thương lượng thành công

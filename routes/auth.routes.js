@@ -56,7 +56,7 @@ router.post('/register', registerController)
  *             properties:
  *               username:
  *                 type: string
- *                 example: test123
+ *                 example: admin
  *               password:
  *                 type: string
  *                 example: 1234567890
