@@ -56,18 +56,9 @@ const router = Router();
  *           minimum: 1
  *           example: 1
  *           description: Bắt buộc khi type = subscription
- *         stripeProductId:
- *           type: string
- *           nullable: true
- *           example: "prod_123"
- *         stripePriceId:
- *           type: string
- *           nullable: true
- *           example: "price_123"
- *         active:
- *           type: boolean
- *           example: true
- *           description: Bật/tắt gói
+ *         stripeProductId: { type: string, nullable: true, example: "prod_123" }
+ *         stripePriceId: { type: string, nullable: true, example: "price_123" }
+ *         active: { type: boolean, example: true }
  *         priority:
  *           type: integer
  *           description: Mức ưu tiên hiển thị (1–9; số càng lớn càng ưu tiên).
@@ -84,58 +75,27 @@ const router = Router();
  *           required: [name, slug, type, amount, durationDays, priority]
  *           properties:
  *             name: { type: string, example: "VIP 60 ngày" }
- *             slug:
- *               type: string
- *               enum: [diamond, gold, silver]
- *               example: gold
- *               description: Phải là một trong: diamond, gold, silver
+ *             slug: { type: string, enum: [diamond, gold, silver], example: gold }
  *             description: { type: string, example: "Premium 60 ngày" }
- *             type:
- *               type: string
- *               enum: [one_time]
+ *             type: { type: string, enum: [one_time] }
  *             amount: { type: integer, example: 199000 }
  *             currency: { type: string, example: "vnd" }
- *             durationDays:
- *               type: integer
- *               minimum: 1
- *               example: 60
- *             priority:
- *               type: integer
- *               description: Giá trị 1–9
- *               minimum: 1
- *               maximum: 9
- *               example: 2
+ *             durationDays: { type: integer, minimum: 1, example: 60 }
+ *             priority: { type: integer, minimum: 1, maximum: 9, example: 2 }
  *             active: { type: boolean, example: true }
  *         - title: Subscription plan
  *           type: object
  *           required: [name, slug, type, amount, interval, intervalCount, priority]
  *           properties:
  *             name: { type: string, example: "VIP Monthly" }
- *             slug:
- *               type: string
- *               enum: [diamond, gold, silver]
- *               example: diamond
- *               description: Phải là một trong: diamond, gold, silver
+ *             slug: { type: string, enum: [diamond, gold, silver], example: diamond }
  *             description: { type: string, example: "Gia hạn theo tháng" }
- *             type:
- *               type: string
- *               enum: [subscription]
+ *             type: { type: string, enum: [subscription] }
  *             amount: { type: integer, example: 149000 }
  *             currency: { type: string, example: "vnd" }
- *             interval:
- *               type: string
- *               enum: [day, week, month, year]
- *               example: "month"
- *             intervalCount:
- *               type: integer
- *               minimum: 1
- *               example: 1
- *             priority:
- *               type: integer
- *               description: Giá trị 1–9
- *               minimum: 1
- *               maximum: 9
- *               example: 3
+ *             interval: { type: string, enum: [day, week, month, year], example: "month" }
+ *             intervalCount: { type: integer, minimum: 1, example: 1 }
+ *             priority: { type: integer, minimum: 1, maximum: 9, example: 3 }
  *             active: { type: boolean, example: true }
  */
 
@@ -184,7 +144,7 @@ router.post("/vip-plans", authenticateToken, isAdmin, createVipPlan);
  *         name: active
  *         schema: { type: string, enum: [true, false] }
  *         required: false
- *         description: Lọc theo trạng thái active (nếu cần).
+ *         description: Lọc theo trạng thái active (nếu cần)
  *     responses:
  *       200:
  *         description: Plans fetched
@@ -204,10 +164,10 @@ router.get("/vip-plans", authenticateToken, isAdmin, getAllVipPlans);
 
 /**
  * @swagger
- * /admin/update/vip-plans/{id}:
+ * /admin/vip-plans/{id}:
  *   patch:
  *     tags: [Admin manage Plan]
- *    summary: Update a VIP plan
+ *     summary: Update a VIP plan
  *     security:
  *       - bearerAuth: []
  *     description: Cập nhật các trường của plan. Nếu thay đổi amount/currency/interval/intervalCount, hệ thống có thể tạo Stripe Price mới và liên kết.
@@ -226,15 +186,8 @@ router.get("/vip-plans", authenticateToken, isAdmin, getAllVipPlans);
  *               name: { type: string, example: "VIP 45 ngày" }
  *               description: { type: string, example: "Gói 45 ngày ưu tiên" }
  *               active: { type: boolean, example: true }
- *               priority:
- *                 type: integer
- *                 minimum: 1
- *                 maximum: 9
- *                 example: 2
- *               slug:
- *                 type: string
- *                 enum: [diamond, gold, silver]
- *                 example: silver
+ *               priority: { type: integer, minimum: 1, maximum: 9, example: 2 }
+ *               slug: { type: string, enum: [diamond, gold, silver], example: silver }
  *               amount: { type: integer, example: 129000 }
  *               currency: { type: string, example: "vnd" }
  *               durationDays: { type: integer, example: 45 }
@@ -255,11 +208,11 @@ router.get("/vip-plans", authenticateToken, isAdmin, getAllVipPlans);
  *       404: { description: Plan not found }
  *       500: { description: Update plan failed }
  */
-router.patch("/update/vip-plans/:id", authenticateToken, isAdmin, updateVipPlan);
+router.patch("/vip-plans/:id", authenticateToken, isAdmin, updateVipPlan);
 
 /**
  * @swagger
- * /admin/delete/vip-plans/{id}:
+ * /admin/vip-plans/{id}:
  *   delete:
  *     tags: [Admin manage Plan]
  *     summary: Soft delete (deactivate) a VIP plan
