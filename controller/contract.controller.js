@@ -138,6 +138,28 @@ export const recordAppointment = async (req, res) => {
 
 export const finalizeNegotiation = async (req, res) => {
   try {
+    // ---- Map alias cho các key phí (nếu FE gõ tắt/nhầm) ----
+    // Chỉ điền vào key chuẩn khi key chuẩn đang thiếu hoặc rỗng.
+    const body = req.body;
+    const alias = {
+      brokerFee: "brokerageFee",
+      transferFee: "titleTransferFee",
+      legalFee: "legalAndConditionCheckFee",
+      adminFee: "adminProcessingFee",
+      reinspectionFee: "reinspectionOrRegistrationSupportFee",
+    };
+    for (const [from, to] of Object.entries(alias)) {
+      if (
+        body[from] !== undefined &&
+        (body[to] === undefined ||
+          body[to] === null ||
+          (typeof body[to] === "string" && body[to].trim() === ""))
+      ) {
+        body[to] = body[from];
+      }
+    }
+
+    // ---- Lấy dữ liệu (sau khi đã map alias) ----
     const {
       contractId,
       agreedPrice,
@@ -148,23 +170,28 @@ export const finalizeNegotiation = async (req, res) => {
       reinspectionOrRegistrationSupportFee,
       feeResponsibility, // ai chịu phí cho từng loại
       note,
-    } = req.body;
+    } = body;
 
     const contract = await ContractModel.findByPk(contractId);
     if (!contract) return res.status(404).json({ message: "Contract not found" });
 
     // helpers: chỉ set khi có giá trị thực, và parse số an toàn (chấp nhận "500,000")
-    const hasVal = (v) => v !== undefined && v !== null && !(typeof v === "string" && v.trim() === "");
-    const toNum  = (v) => Number(String(v).replace(/,/g, ""));
+    const hasVal = (v) =>
+      v !== undefined && v !== null && !(typeof v === "string" && v.trim() === "");
+    const toNum = (v) => Number(String(v).replace(/,/g, ""));
 
     // cập nhật giá & các loại phí (không ghi đè nếu frontend gửi "")
     if (hasVal(agreedPrice)) contract.agreedPrice = toNum(agreedPrice);
     if (hasVal(brokerageFee)) contract.brokerageFee = toNum(brokerageFee);
     if (hasVal(titleTransferFee)) contract.titleTransferFee = toNum(titleTransferFee);
-    if (hasVal(legalAndConditionCheckFee)) contract.legalAndConditionCheckFee = toNum(legalAndConditionCheckFee);
-    if (hasVal(adminProcessingFee)) contract.adminProcessingFee = toNum(adminProcessingFee);
+    if (hasVal(legalAndConditionCheckFee))
+      contract.legalAndConditionCheckFee = toNum(legalAndConditionCheckFee);
+    if (hasVal(adminProcessingFee))
+      contract.adminProcessingFee = toNum(adminProcessingFee);
     if (hasVal(reinspectionOrRegistrationSupportFee)) {
-      contract.reinspectionOrRegistrationSupportFee = toNum(reinspectionOrRegistrationSupportFee);
+      contract.reinspectionOrRegistrationSupportFee = toNum(
+        reinspectionOrRegistrationSupportFee
+      );
     }
 
     // feeResponsibility: chỉ nhận "buyer" | "seller" cho các key hợp lệ
@@ -184,7 +211,10 @@ export const finalizeNegotiation = async (req, res) => {
         }
       }
       if (Object.keys(cleaned).length > 0) {
-        contract.feeResponsibility = { ...(contract.feeResponsibility || {}), ...cleaned };
+        contract.feeResponsibility = {
+          ...(contract.feeResponsibility || {}),
+          ...cleaned,
+        };
       }
     }
 
@@ -484,7 +514,8 @@ export const sendFinalContractToParties = async (req, res) => {
     if (!contract.buyerSignedAt || !contract.sellerSignedAt) {
       return res.status(400).json({ message: "Both buyer and seller must sign before sending final contract" });
     }
-
+    
+    await contract.reload();
     const [buyer, seller] = await Promise.all([
       UserModel.findByPk(contract.buyerId, { attributes: ["username", "email"] }),
       UserModel.findByPk(contract.sellerId, { attributes: ["username", "email"] }),
@@ -558,7 +589,7 @@ export const sendDraftContractToParties = async (req, res) => {
     if (contract.status !== "awaiting_sign") {
       return res.status(400).json({ message: "Contract must be in 'awaiting_sign' state to send draft" });
     }
-
+    await contract.reload();
     const [buyer, seller] = await Promise.all([
       UserModel.findByPk(contract.buyerId, { attributes: ["username", "email"] }),
       UserModel.findByPk(contract.sellerId, { attributes: ["username", "email"] }),
