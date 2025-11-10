@@ -142,6 +142,7 @@ export const stripeWebhook = async (req, res) => {
   }
 
   try {
+    // 1) Thanh toán xong -> bật VIP + tính hạn
     if (event.type === "checkout.session.completed") {
       const s = event.data.object;
       const orderCode = s?.metadata?.orderCode;
@@ -149,7 +150,9 @@ export const stripeWebhook = async (req, res) => {
       const planId = Number(s?.metadata?.planId);
       const postId = Number(s?.metadata?.postId);
       const type = s?.metadata?.type || "one_time";
-      const metaDuration = s?.metadata?.durationDays ? Number(s.metadata.durationDays) : null;
+      const metaDuration = s?.metadata?.durationDays
+        ? Number(s?.metadata?.durationDays)
+        : null;
 
       if (!orderCode || !userId || !postId) {
         console.warn("[stripeWebhook] missing metadata:", s?.metadata);
@@ -157,14 +160,8 @@ export const stripeWebhook = async (req, res) => {
       }
 
       const tx = await VipPurchaseModel.findOne({ where: { orderCode } });
-      if (!tx) {
-        console.warn("[stripeWebhook] VipPurchase not found:", orderCode);
-        return res.json({ received: true });
-      }
-      if (tx.status === "PAID") {
-        // Idempotent
-        return res.json({ received: true });
-      }
+      if (!tx) return res.json({ received: true });
+      if (tx.status === "PAID") return res.json({ received: true });
 
       const [post, plan, user] = await Promise.all([
         PostModel.findByPk(postId),
@@ -173,23 +170,19 @@ export const stripeWebhook = async (req, res) => {
       ]);
 
       if (!post || !user || post.userId !== user.id) {
-        console.warn("[stripeWebhook] invalid post/user ownership");
         await tx.update({ status: "FAILED", rawPayload: s });
         return res.json({ received: true });
       }
 
-      // Đánh dấu giao dịch đã thanh toán
       await tx.update({ status: "PAID", rawPayload: s });
 
-      // Tính hạn VIP:
+      // Tính hạn VIP
       let vipExpiresAt = null;
       if (type === "subscription" && s.mode === "subscription" && s.subscription) {
-        // Lấy kỳ hạn thật từ subscription (khuyến nghị)
         try {
           const sub = await stripe.subscriptions.retrieve(s.subscription);
           vipExpiresAt = new Date(sub.current_period_end * 1000);
         } catch (e) {
-          console.warn("[webhook] retrieve subscription failed:", e?.message);
           vipExpiresAt = addDays(new Date(), metaDuration || DEFAULT_DURATION_DAYS);
         }
       } else {
@@ -197,17 +190,13 @@ export const stripeWebhook = async (req, res) => {
         vipExpiresAt = addDays(new Date(), days);
       }
 
-      // Xác định tier/priority an toàn
       const vipTier = plan?.slug && ALLOWED_TIERS.includes(plan.slug) ? plan.slug : null;
       const vipPriority = plan?.priority ?? 0;
 
-      // ❗ Nếu bạn muốn hiển thị ngay sau khi trả tiền:
-      //  - set isActive=true
-      //  - nếu public list đang lọc verifyStatus='verify', thì set verifyStatus='verify' luôn
       await post.update({
         isVip: true,
         isActive: true,
-        verifyStatus: "nonverify", // nếu bạn vẫn muốn duyệt tay, hãy đổi thành "nonverify" và để staff bật isActive sau
+        verifyStatus: "nonverify",
         vipPlanId: plan ? plan.id : null,
         vipTier,
         vipPriority,
@@ -219,10 +208,80 @@ export const stripeWebhook = async (req, res) => {
       console.log(`[stripeWebhook] ✅ Post ${postId} VIP active until ${vipExpiresAt.toISOString()}`);
     }
 
+    // 2) Subscription kết thúc/hủy hoặc kỳ thanh toán thất bại -> tắt VIP
+    if (
+      event.type === "customer.subscription.deleted" ||
+      event.type === "invoice.payment_failed"
+    ) {
+      const obj = event.data.object;
+      const subscriptionId = obj?.id || obj?.subscription;
+      if (!subscriptionId) return res.json({ received: true });
+
+      const paidTxs = await VipPurchaseModel.findAll({
+        where: { provider: "stripe", status: "PAID" },
+      });
+
+      const matchedTx = paidTxs.find((t) => {
+        try {
+          if (!t?.rawPayload) return false;
+          if (t.rawPayload?.subscription === subscriptionId) return true;
+          if (t.rawPayload?.id === subscriptionId) return true;
+          return JSON.stringify(t.rawPayload).includes(subscriptionId);
+        } catch {
+          return false;
+        }
+      });
+
+      if (!matchedTx) return res.json({ received: true });
+      const post = await PostModel.findByPk(matchedTx.postId);
+      if (!post) return res.json({ received: true });
+
+      await post.update({ isVip: false, isActive: false });
+      console.log(`[stripeWebhook] ❌ Subscription ended -> Post ${post.id} deactivated`);
+    }
+
+    // 3) Subscription cập nhật trạng thái (tắt auto-renew, canceled, past_due, unpaid)
+    if (event.type === "customer.subscription.updated") {
+      const sub = event.data.object;
+      const subscriptionId = sub.id;
+      const status = sub.status;
+      const cancelAtPeriodEnd = sub.cancel_at_period_end;
+      const currentPeriodEnd = sub.current_period_end
+        ? new Date(sub.current_period_end * 1000)
+        : null;
+
+      const paidTxs = await VipPurchaseModel.findAll({
+        where: { provider: "stripe", status: "PAID" },
+      });
+
+      const matchedTx = paidTxs.find((t) => {
+        try {
+          if (!t?.rawPayload) return false;
+          if (t.rawPayload?.subscription === subscriptionId) return true;
+          return JSON.stringify(t.rawPayload).includes(subscriptionId);
+        } catch {
+          return false;
+        }
+      });
+
+      if (!matchedTx) return res.json({ received: true });
+      const post = await PostModel.findByPk(matchedTx.postId);
+      if (!post) return res.json({ received: true });
+
+      if (status === "active" && cancelAtPeriodEnd && currentPeriodEnd) {
+        await post.update({ vipExpiresAt: currentPeriodEnd });
+        console.log(`[stripeWebhook] ⚠️ Auto-renew off -> VIP giữ tới ${currentPeriodEnd.toISOString()} (post ${post.id})`);
+      }
+
+      if (["canceled", "past_due", "unpaid"].includes(status)) {
+        await post.update({ isVip: false, isActive: false });
+        console.log(`[stripeWebhook] ❌ Subscription ${subscriptionId} status=${status} -> Post ${post.id} deactivated`);
+      }
+    }
+
     return res.json({ received: true });
   } catch (err) {
     console.error("[stripeWebhook] handler error:", err);
-    // vẫn trả 200 cho Stripe để khỏi retry quá dày; bạn theo dõi log để xử lý lại nếu cần
     return res.json({ received: true });
   }
 };
