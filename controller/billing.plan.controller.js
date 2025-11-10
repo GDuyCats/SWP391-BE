@@ -110,7 +110,7 @@ export const checkoutFromPlan = async (req, res) => {
           durationDays: String(plan.durationDays ?? ""),
         },
         success_url: `${process.env.CLIENT_URL}`,
-        cancel_url: `${process.env.CLIENT_URL}/billing/cancel`,
+        cancel_url: `${process.env.CLIENT_URL}`,
       },
       // idempotent để tránh tạo session trùng nếu client retry
       { idempotencyKey: orderCode }

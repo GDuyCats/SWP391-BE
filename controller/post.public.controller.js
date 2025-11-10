@@ -20,7 +20,7 @@ export const listAdvancedPublicPosts = async (req, res) => {
       dateTo,
       sort = "vip_newest", // vip_newest | vip_oldest | price_asc | price_desc
       page = "1",
-      pageSize = "10",
+      pageSize = "20",
       category,
 
       // VIP filters
@@ -30,7 +30,7 @@ export const listAdvancedPublicPosts = async (req, res) => {
     } = req.query;
 
     const pageNum = Math.max(parseInt(page, 10) || 1, 1);
-    const sizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 10, 1), 50);
+    const sizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 20, 1), 50);
     const offset = (pageNum - 1) * sizeNum;
 
     // ===== where: chỉ bài đang active & đã verify =====

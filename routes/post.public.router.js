@@ -146,7 +146,7 @@ const router = Router();
  *       type: object
  *       properties:
  *         page:     { type: integer, example: 1 }
- *         pageSize: { type: integer, example: 10 }
+ *         pageSize: { type: integer, example: 20 }
  *         total:    { type: integer, example: 35 }
  *       required: [page, pageSize, total]
  *

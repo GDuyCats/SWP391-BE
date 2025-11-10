@@ -467,7 +467,7 @@ export const getMyPosts = async (req, res) => {
     if (!userId) return res.status(401).json({ message: "Chưa đăng nhập" });
 
     const page = Math.max(parseInt(req.query.page ?? "1", 10), 1);
-    const pageSize = Math.min(Math.max(parseInt(req.query.pageSize ?? "10", 10), 1), 50);
+    const pageSize = Math.min(Math.max(parseInt(req.query.pageSize ?? "20", 10), 1), 50);
     const offset = (page - 1) * pageSize;
 
     const { rows, count } = await PostModel.findAndCountAll({
