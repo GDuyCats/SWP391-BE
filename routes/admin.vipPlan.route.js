@@ -255,7 +255,7 @@ router.get("/vip-plans", authenticateToken, isAdmin, getAllVipPlans);
  *       404: { description: Plan not found }
  *       500: { description: Update plan failed }
  */
-router.patch("/vip-plans/:id", authenticateToken, isAdmin, updateVipPlan);
+router.patch("/update/vip-plans/:id", authenticateToken, isAdmin, updateVipPlan);
 
 /**
  * @swagger
