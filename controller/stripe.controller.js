@@ -93,7 +93,7 @@ export const createVipCheckout = async (req, res) => {
         durationDays: String(plan.durationDays ?? ""),
       },
       success_url: `${process.env.CLIENT_URL}`,
-      cancel_url: `${process.env.CLIENT_URL}/billing/cancel`,
+      cancel_url: `${process.env.CLIENT_URL}`,
     };
 
     // Với subscription, bắt buộc phải có priceId hợp lệ

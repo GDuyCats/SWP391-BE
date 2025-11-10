@@ -22,7 +22,7 @@ const profileController = async (req, res) => {
         "role",
         "isVerified",
         // "isVip",
-        "vipExpiresAt",
+        // "vipExpiresAt",
         "createdAt",
         "updatedAt",
       ],
