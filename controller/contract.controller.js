@@ -146,23 +146,28 @@ export const finalizeNegotiation = async (req, res) => {
       legalAndConditionCheckFee,
       adminProcessingFee,
       reinspectionOrRegistrationSupportFee,
-      feeResponsibility, // ⇦ NEW: ai chịu phí cho từng loại
+      feeResponsibility, // ai chịu phí cho từng loại
       note,
     } = req.body;
 
     const contract = await ContractModel.findByPk(contractId);
     if (!contract) return res.status(404).json({ message: "Contract not found" });
 
-    if (agreedPrice != null) contract.agreedPrice = Number(agreedPrice);
-    if (brokerageFee != null) contract.brokerageFee = Number(brokerageFee);
-    if (titleTransferFee != null) contract.titleTransferFee = Number(titleTransferFee);
-    if (legalAndConditionCheckFee != null) contract.legalAndConditionCheckFee = Number(legalAndConditionCheckFee);
-    if (adminProcessingFee != null) contract.adminProcessingFee = Number(adminProcessingFee);
-    if (reinspectionOrRegistrationSupportFee != null) {
-      contract.reinspectionOrRegistrationSupportFee = Number(reinspectionOrRegistrationSupportFee);
+    // helpers: chỉ set khi có giá trị thực, và parse số an toàn (chấp nhận "500,000")
+    const hasVal = (v) => v !== undefined && v !== null && !(typeof v === "string" && v.trim() === "");
+    const toNum  = (v) => Number(String(v).replace(/,/g, ""));
+
+    // cập nhật giá & các loại phí (không ghi đè nếu frontend gửi "")
+    if (hasVal(agreedPrice)) contract.agreedPrice = toNum(agreedPrice);
+    if (hasVal(brokerageFee)) contract.brokerageFee = toNum(brokerageFee);
+    if (hasVal(titleTransferFee)) contract.titleTransferFee = toNum(titleTransferFee);
+    if (hasVal(legalAndConditionCheckFee)) contract.legalAndConditionCheckFee = toNum(legalAndConditionCheckFee);
+    if (hasVal(adminProcessingFee)) contract.adminProcessingFee = toNum(adminProcessingFee);
+    if (hasVal(reinspectionOrRegistrationSupportFee)) {
+      contract.reinspectionOrRegistrationSupportFee = toNum(reinspectionOrRegistrationSupportFee);
     }
 
-    // ⇨ Chỉ nhận "buyer" | "seller" cho từng key phí
+    // feeResponsibility: chỉ nhận "buyer" | "seller" cho các key hợp lệ
     if (feeResponsibility && typeof feeResponsibility === "object") {
       const ALLOWED_KEYS = [
         "brokerageFee",
@@ -173,25 +178,23 @@ export const finalizeNegotiation = async (req, res) => {
       ];
       const cleaned = {};
       for (const k of ALLOWED_KEYS) {
-        if (feeResponsibility[k]) {
+        if (hasVal(feeResponsibility[k])) {
           const v = String(feeResponsibility[k]).toLowerCase().trim();
           if (v === "buyer" || v === "seller") cleaned[k] = v;
         }
       }
       if (Object.keys(cleaned).length > 0) {
-        contract.feeResponsibility = {
-          ...(contract.feeResponsibility || {}),
-          ...cleaned,
-        };
+        contract.feeResponsibility = { ...(contract.feeResponsibility || {}), ...cleaned };
       }
     }
 
-    if (note) {
+    if (hasVal(note)) {
       contract.notes = contract.notes
         ? `${contract.notes}\n\n[Staff note] ${note}`
         : `[Staff note] ${note}`;
     }
 
+    // chuyển trạng thái sang chờ ký OTP
     contract.status = "awaiting_sign";
     await contract.save();
 
