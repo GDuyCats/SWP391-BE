@@ -204,7 +204,7 @@ router.get("/vip-plans", authenticateToken, isAdmin, getAllVipPlans);
 
 /**
  * @swagger
- * /admin/vip-plans/{id}:
+ * /admin/update/vip-plans/{id}:
  *   patch:
  *     tags: [Admin manage Plan]
  *    summary: Update a VIP plan
@@ -259,7 +259,7 @@ router.patch("/vip-plans/:id", authenticateToken, isAdmin, updateVipPlan);
 
 /**
  * @swagger
- * /admin/vip-plans/{id}:
+ * /admin/delete/vip-plans/{id}:
  *   delete:
  *     tags: [Admin manage Plan]
  *     summary: Soft delete (deactivate) a VIP plan
