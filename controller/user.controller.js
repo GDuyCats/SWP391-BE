@@ -21,7 +21,7 @@ const profileController = async (req, res) => {
         "avatar",
         "role",
         "isVerified",
-        "isVip",
+        // "isVip",
         "vipExpiresAt",
         "createdAt",
         "updatedAt",
