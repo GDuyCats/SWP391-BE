@@ -108,6 +108,7 @@ export const createPostModel = (sequelize) => {
         defaultValue: "vehicle",
       },
     },
+    
     {
       indexes: [
         { fields: ["isActive"] },
