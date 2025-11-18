@@ -509,3 +509,47 @@ export const getUserPosts = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+// ======================================================
+// UPDATE SALE STATUS (owner tự đánh dấu còn bán / đã bán)
+// ======================================================
+export const updateMyPostSaleStatus = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;          // id bài post
+    const { saleStatus } = req.body ?? {};
+
+    if (!userId) {
+      return res.status(401).json({ message: "Chưa đăng nhập" });
+    }
+
+    // Validate giá trị saleStatus
+    const allowed = ["available", "sold"];
+    if (!saleStatus || !allowed.includes(String(saleStatus))) {
+      return res.status(400).json({
+        message: "saleStatus phải là 'available' hoặc 'sold'",
+        received: saleStatus,
+      });
+    }
+
+    const post = await PostModel.findByPk(id);
+    if (!post) {
+      return res.status(404).json({ message: "Không tìm thấy post" });
+    }
+
+    // Chỉ cho chủ bài post được quyền đổi
+    if (post.userId !== userId) {
+      return res.status(403).json({ message: "Bạn không có quyền cập nhật saleStatus của post này" });
+    }
+
+    post.saleStatus = saleStatus;
+    await post.save();
+
+    return res.status(200).json({
+      message: "Cập nhật saleStatus thành công",
+      data: post,
+    });
+  } catch (err) {
+    console.error("updateMyPostSaleStatus error:", err);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};

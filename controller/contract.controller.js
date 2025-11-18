@@ -349,7 +349,8 @@ export const verifyContractOtp = async (req, res) => {
     const { contractId, code } = req.body;
 
     if (!user?.id) return res.status(401).json({ message: "Missing auth payload" });
-    if (!contractId || !code) return res.status(400).json({ message: "contractId and code are required" });
+    if (!contractId || !code)
+      return res.status(400).json({ message: "contractId and code are required" });
 
     const contract = await ContractModel.findByPk(contractId);
     if (!contract) return res.status(404).json({ message: "Contract not found" });
@@ -357,31 +358,39 @@ export const verifyContractOtp = async (req, res) => {
     const now = new Date();
 
     if (contract.buyerId === user.id) {
-      if (contract.buyerSignedAt) return res.status(409).json({ message: "Buyer already signed" });
+      if (contract.buyerSignedAt)
+        return res.status(409).json({ message: "Buyer already signed" });
       if (!contract.buyerOtp || now > new Date(contract.buyerOtpExpiresAt))
         return res.status(400).json({ message: "OTP expired or not issued" });
 
       contract.buyerOtpAttempts += 1;
-      if (contract.buyerOtpAttempts > 5) return res.status(429).json({ message: "Too many attempts" });
-      if (code !== contract.buyerOtp) return res.status(400).json({ message: "Invalid OTP code" });
+      if (contract.buyerOtpAttempts > 5)
+        return res.status(429).json({ message: "Too many attempts" });
+      if (code !== contract.buyerOtp)
+        return res.status(400).json({ message: "Invalid OTP code" });
 
       contract.buyerSignedAt = now;
       contract.buyerOtp = null;
       await contract.save();
     } else if (contract.sellerId === user.id) {
-      if (contract.sellerSignedAt) return res.status(409).json({ message: "Seller already signed" });
+      if (contract.sellerSignedAt)
+        return res.status(409).json({ message: "Seller already signed" });
       if (!contract.sellerOtp || now > new Date(contract.sellerOtpExpiresAt))
         return res.status(400).json({ message: "OTP expired or not issued" });
 
       contract.sellerOtpAttempts += 1;
-      if (contract.sellerOtpAttempts > 5) return res.status(429).json({ message: "Too many attempts" });
-      if (code !== contract.sellerOtp) return res.status(400).json({ message: "Invalid OTP code" });
+      if (contract.sellerOtpAttempts > 5)
+        return res.status(429).json({ message: "Too many attempts" });
+      if (code !== contract.sellerOtp)
+        return res.status(400).json({ message: "Invalid OTP code" });
 
       contract.sellerSignedAt = now;
       contract.sellerOtp = null;
       await contract.save();
     } else {
-      return res.status(403).json({ message: "You are not a party of this contract" });
+      return res
+        .status(403)
+        .json({ message: "You are not a party of this contract" });
     }
 
     const refreshed = await ContractModel.findByPk(contractId);
@@ -389,11 +398,29 @@ export const verifyContractOtp = async (req, res) => {
       refreshed.status = "signed";
       refreshed.signedAt = new Date();
       await refreshed.save();
+
+      // 🔹 NEW: khi cả 2 bên đã ký, đánh dấu bài post là SOLD
+      try {
+        const post = await PostModel.findByPk(refreshed.postId);
+        if (post && post.saleStatus !== "sold") {
+          post.saleStatus = "sold"; // ENUM("available", "sold")
+          await post.save();
+        }
+      } catch (postErr) {
+        console.error(
+          "[contracts/verify-otp] failed to update post.saleStatus:",
+          postErr
+        );
+        // Không throw để không làm fail response, vì contract đã ký xong rồi
+      }
     }
 
     res.set("Cache-Control", "no-store");
     return res.status(200).json({
-      message: refreshed.status === "signed" ? "Both parties signed. Contract is signed." : "OTP verified.",
+      message:
+        refreshed.status === "signed"
+          ? "Both parties signed. Contract is signed."
+          : "OTP verified.",
       contract: refreshed,
     });
   } catch (err) {

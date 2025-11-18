@@ -34,7 +34,7 @@ export const listAdvancedPublicPosts = async (req, res) => {
     const offset = (pageNum - 1) * sizeNum;
 
     // ===== where: chỉ bài đang active & đã verify =====
-    const where = { isActive: true, verifyStatus: "verify" };
+    const where = { isActive: true, verifyStatus: "verify", saleStatus: "available", };
 
     // Tìm kiếm theo tiêu đề/nội dung
     if (q.trim()) {
@@ -189,6 +189,7 @@ export const listAdvancedPublicPosts = async (req, res) => {
         thumbnail: p.thumbnail ?? null,
         isActive: p.isActive ?? null,
         verifyStatus: p.verifyStatus ?? null,
+        saleStatus: p.saleStatus ?? null, 
         isVip: p.isVip ?? false,
         vipTier: p.vipTier ?? null,
         vipPriority: p.vipPriority ?? 0,
@@ -247,7 +248,7 @@ export const getPostDetail = async (req, res) => {
     console.log("VehicleDetails rows for this postId:", vCount.count);
 
     const post = await PostModel.findOne({
-      where: { id, isActive: true },
+      where: { id, isActive: true, saleStatus: "available", },
       include: [
         {
           model: UserModel,
@@ -325,6 +326,7 @@ export const getPostDetail = async (req, res) => {
       vipTier: p.vipTier ?? null,
       vipPriority: p.vipPriority ?? 0,
       vipExpiresAt: p.vipExpiresAt ?? null,
+      saleStatus: p.saleStatus ?? null,
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
 

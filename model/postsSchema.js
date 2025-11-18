@@ -89,6 +89,12 @@ export const createPostModel = (sequelize) => {
         allowNull: false,
         defaultValue: true,
       },
+      
+      saleStatus: {   
+        type: DataTypes.ENUM("available", "sold"),
+        allowNull: false,
+        defaultValue: "available",
+      },
 
       verifyStatus: {
         type: DataTypes.ENUM("verify", "nonverify"),
