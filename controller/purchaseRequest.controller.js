@@ -85,7 +85,6 @@ export const acceptPurchaseRequest = async (req, res) => {
         return { code: 409, body: { message: "Related post not found" } };
       }
 
-      // (tùy bạn, có thể giữ/bỏ 2 điều kiện dưới)
       if (post.verifyStatus !== "verify" || !post.isActive) {
         return {
           code: 409,
@@ -114,15 +113,20 @@ export const acceptPurchaseRequest = async (req, res) => {
         );
       }
 
-      // 5) Trả kết quả phù hợp theo category
+      // 5️⃣ Nếu bán PIN → cập nhật saleStatus = "sold"
+      if (post.category === "battery") {
+        await post.update({ saleStatus: "sold" }, { transaction: t });
+      }
+
+      // 6) Trả về kết quả
       return {
         code: 200,
         body: {
           message:
             post.category === "vehicle"
               ? "Purchase request accepted, contract created"
-              : "Purchase request accepted (no contract required for this category)",
-          contract, // sẽ là null nếu category != vehicle (vd: battery)
+              : "Purchase request accepted (battery marked as sold)",
+          contract,
           purchaseRequest: request,
         },
       };
