@@ -16,88 +16,143 @@ const router = Router();
  * @swagger
  * components:
  *   schemas:
- *     VipPlan:
+ *     CreateVipPlanRequest:
  *       type: object
+ *       required:
+ *         - name
+ *         - type
+ *         - amount
+ *         - priority
+ *         - slug
  *       properties:
- *         id: { type: integer, example: 1 }
- *         name: { type: string, example: "VIP 30 ngày" }
- *         slug:
+ *         name:
  *           type: string
- *           description: Mã gói dùng để map sang vipTier của Post. Chỉ nhận: diamond, gold, silver.
- *           enum: [diamond, gold, silver]
- *           example: diamond
- *         description: { type: string, example: "Hiển thị ưu tiên trong 30 ngày" }
+ *           description: Tên gói VIP hiển thị cho user.
+ *           example: "Diamond 30 days"
+ *         description:
+ *           type: string
+ *           description: Mô tả chi tiết về quyền lợi của gói.
+ *           example: "Top priority posts in listing, highlight badge, more impressions."
  *         type:
  *           type: string
+ *           description: Loại gói. "one_time" dùng cho gói theo số ngày, "subscription" dùng cho gói dạng subscription Stripe.
  *           enum: [one_time, subscription]
- *           example: one_time
+ *           example: "one_time"
  *         amount:
  *           type: integer
- *           description: Giá gói (đơn vị nhỏ nhất), ví dụ VND.
+ *           format: int64
+ *           description: >
+ *             Số tiền phải > 0 (đơn vị nhỏ nhất của currency, với VND là số tiền đúng luôn, ví dụ 99000).
  *           example: 99000
  *         currency:
  *           type: string
- *           description: Mã tiền tệ ISO-4217. Mặc định "vnd".
+ *           description: Mã tiền tệ theo Stripe, mặc định là "vnd".
+ *           example: "vnd"
+ *         durationDays:
+ *           type: integer
+ *           minimum: 1
+ *           nullable: true
+ *           description: >
+ *             Bắt buộc khi type = "one_time".
+ *             Số ngày hiệu lực của gói kể từ lúc mua.
+ *           example: 30
+ *         interval:
+ *           type: string
+ *           nullable: true
+ *           description: >
+ *             Bắt buộc khi type = "subscription".
+ *             Khoảng thời gian lặp lại của subscription Stripe.
+ *           enum: [day, week, month, year]
+ *           example: "month"
+ *         intervalCount:
+ *           type: integer
+ *           minimum: 1
+ *           nullable: true
+ *           description: >
+ *             Bắt buộc khi type = "subscription".
+ *             Số interval cho mỗi lần thanh toán (ví dụ: 1 month, 3 months, ...).
+ *           example: 1
+ *         priority:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 9
+ *           description: >
+ *             Thứ tự ưu tiên (1 là ưu tiên cao hơn 2, ...).
+ *             Bắt buộc, phải là số nguyên 1–9. Controller reject nếu >= 10.
+ *           example: 1
+ *         slug:
+ *           type: string
+ *           description: >
+ *             Tier slug cho gói.
+ *             Controller sẽ normalize slug (toTierSlug) và kiểm tra phải thuộc danh sách ALLOWED_TIERS.
+ *           enum: [diamond, gold, silver]
+ *           example: "diamond"
+ *
+ *     VipPlan:
+ *       type: object
+ *       description: Thông tin gói VIP lưu trong database.
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 1
+ *         name:
+ *           type: string
+ *           example: "Diamond 30 days"
+ *         description:
+ *           type: string
+ *           example: "Top priority posts in listing, highlight badge, more impressions."
+ *         type:
+ *           type: string
+ *           enum: [one_time, subscription]
+ *           example: "one_time"
+ *         amount:
+ *           type: integer
+ *           format: int64
+ *           example: 99000
+ *         currency:
+ *           type: string
  *           example: "vnd"
  *         durationDays:
  *           type: integer
  *           nullable: true
  *           example: 30
- *           description: Bắt buộc khi type = one_time
  *         interval:
  *           type: string
  *           nullable: true
- *           enum: [day, week, month, year]
  *           example: "month"
- *           description: Bắt buộc khi type = subscription
  *         intervalCount:
  *           type: integer
  *           nullable: true
- *           minimum: 1
  *           example: 1
- *           description: Bắt buộc khi type = subscription
- *         stripeProductId: { type: string, nullable: true, example: "prod_123" }
- *         stripePriceId: { type: string, nullable: true, example: "price_123" }
- *         active: { type: boolean, example: true }
+ *         stripeProductId:
+ *           type: string
+ *           description: ID product trên Stripe.
+ *           example: "prod_Qabc123xyz"
+ *         stripePriceId:
+ *           type: string
+ *           description: ID price trên Stripe.
+ *           example: "price_1PxyzAbc123"
+ *         active:
+ *           type: boolean
+ *           description: Gói đang được sử dụng hay đã tắt.
+ *           example: true
  *         priority:
  *           type: integer
- *           description: Mức ưu tiên hiển thị (1–9; số càng lớn càng ưu tiên).
- *           minimum: 1
- *           maximum: 9
- *           example: 3
- *         createdAt: { type: string, format: date-time }
- *         updatedAt: { type: string, format: date-time }
- *
- *     CreateVipPlanRequest:
- *       oneOf:
- *         - title: One-time plan
- *           type: object
- *           required: [name, slug, type, amount, durationDays, priority]
- *           properties:
- *             name: { type: string, example: "VIP 60 ngày" }
- *             slug: { type: string, enum: [diamond, gold, silver], example: gold }
- *             description: { type: string, example: "Premium 60 ngày" }
- *             type: { type: string, enum: [one_time] }
- *             amount: { type: integer, example: 199000 }
- *             currency: { type: string, example: "vnd" }
- *             durationDays: { type: integer, minimum: 1, example: 60 }
- *             priority: { type: integer, minimum: 1, maximum: 9, example: 2 }
- *             active: { type: boolean, example: true }
- *         - title: Subscription plan
- *           type: object
- *           required: [name, slug, type, amount, interval, intervalCount, priority]
- *           properties:
- *             name: { type: string, example: "VIP Monthly" }
- *             slug: { type: string, enum: [diamond, gold, silver], example: diamond }
- *             description: { type: string, example: "Gia hạn theo tháng" }
- *             type: { type: string, enum: [subscription] }
- *             amount: { type: integer, example: 149000 }
- *             currency: { type: string, example: "vnd" }
- *             interval: { type: string, enum: [day, week, month, year], example: "month" }
- *             intervalCount: { type: integer, minimum: 1, example: 1 }
- *             priority: { type: integer, minimum: 1, maximum: 9, example: 3 }
- *             active: { type: boolean, example: true }
+ *           example: 1
+ *         slug:
+ *           type: string
+ *           enum: [diamond, gold, silver]
+ *           example: "diamond"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           example: "2025-11-21T10:15:30.000Z"
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           example: "2025-11-21T10:15:30.000Z"
  */
+
 
 /**
  * @swagger
@@ -107,7 +162,18 @@ const router = Router();
  *     summary: Create a new VIP plan
  *     security:
  *       - bearerAuth: []
- *     description: Tạo gói one-time hoặc subscription. Hệ thống sẽ tạo Stripe Product & Price (nếu cấu hình) rồi lưu khóa tham chiếu lại.
+ *     description: >
+ *       Create a VIP plan of type **one_time** or **subscription**.
+ *       The system will create a Stripe Product & Price first, then save the reference
+ *       (stripeProductId, stripePriceId) into the database along with plan metadata.
+ *
+ *       **Validation rules:**
+ *       - `name`, `type`, `amount`, `priority`, `slug` are required.
+ *       - `amount` must be > 0 (VND).
+ *       - `priority` must be an integer from 1 to 9.
+ *       - `slug` must be one of: `diamond`, `gold`, `silver`.
+ *       - If `type = "one_time"`: `durationDays` is required and must be integer ≥ 1.
+ *       - If `type = "subscription"`: `interval` and `intervalCount` are required and `intervalCount` must be integer ≥ 1.
  *     requestBody:
  *       required: true
  *       content:
@@ -116,20 +182,28 @@ const router = Router();
  *             $ref: '#/components/schemas/CreateVipPlanRequest'
  *     responses:
  *       201:
- *         description: Plan created
+ *         description: Plan created successfully
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 plan: { $ref: '#/components/schemas/VipPlan' }
- *       400: { description: Bad request (validation) }
- *       401: { description: Unauthorized }
- *       403: { description: Admin only }
- *       500: { description: Create plan failed }
+ *                 ok:
+ *                   type: boolean
+ *                   example: true
+ *                 plan:
+ *                   $ref: '#/components/schemas/VipPlan'
+ *       400:
+ *         description: Validation error (missing fields, invalid type, duplicate slug, etc.)
+ *       401:
+ *         description: Unauthorized (missing or invalid bearer token)
+ *       403:
+ *         description: Forbidden (admin only)
+ *       500:
+ *         description: Internal server error while creating plan
  */
 router.post("/vip-plans", authenticateToken, isAdmin, createVipPlan);
+
 
 /**
  * @swagger

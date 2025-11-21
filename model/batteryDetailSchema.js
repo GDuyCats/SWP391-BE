@@ -16,7 +16,7 @@ export const createBatteryDetailModel = (sequelize) => {
       // Thông tin pin bán rời
       battery_brand: { type: DataTypes.STRING },
       battery_model: { type: DataTypes.STRING },
-      battery_capacity: { type: DataTypes.FLOAT },
+      battery_capacity: { type: DataTypes.STRING },
       battery_type: { type: DataTypes.STRING },
       battery_condition: { type: DataTypes.STRING },
       compatible_models: { type: DataTypes.ARRAY(DataTypes.STRING) }, // Postgres OK
