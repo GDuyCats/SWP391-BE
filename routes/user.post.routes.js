@@ -7,7 +7,8 @@ import {
   deleteMyPost,
   getMyPosts,
   getUserPosts,
-  updateMyPostSaleStatus, // 👈 NEW
+  updateMyPostSaleStatus,
+  getMyPostDetail,     // 👈 NEW
 } from "../controller/user.post.controller.js";
 import { enforcePostQuota } from "../middleware/enforcePostQuota.js";
 import isCustomer from "../middleware/isCustomer.js";
@@ -151,6 +152,40 @@ router.patch(
     { name: "imageFiles", maxCount: 12 },
   ]),
   updateMyPost
+);
+
+/**
+ * @openapi
+ * /post/{id}/detail:
+ *   get:
+ *     summary: Get detail of a post owned by the authenticated user
+ *     tags: [Users ( Posts )]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID của post cần xem chi tiết
+ *     responses:
+ *       200:
+ *         description: Chi tiết post (chỉ khi là owner)
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Không có quyền xem post này (không phải owner)
+ *       404:
+ *         description: Không tìm thấy post
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/post/:id/detail",
+  authenticateToken,
+  isCustomer,
+  getMyPostDetail
 );
 
 /**

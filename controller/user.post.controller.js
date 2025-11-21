@@ -486,6 +486,97 @@ export const getMyPosts = async (req, res) => {
 };
 
 // ======================================================
+// GET MY POST DETAIL (owner only)
+// ======================================================
+export const getMyPostDetail = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Chưa đăng nhập" });
+    }
+
+    const post = await PostModel.findByPk(id, {
+      attributes: [
+        "id",
+        "userId",
+        "title",
+        "content",
+        "image",
+        "thumbnail",
+        "price",
+        "phone",
+        "category",
+        "verifyStatus",
+        "isActive",
+        "isVip",
+        "vipTier",
+        "vipPriority",
+        "vipExpiresAt",
+        "saleStatus",
+        "createdAt",
+        "updatedAt",
+      ],
+      include: [
+        {
+          model: UserModel,
+          attributes: ["id", "username", "avatar", "email"],
+        },
+        {
+          model: VehicleDetailModel,
+          as: "vehicleDetail",
+          required: false,
+          attributes: [
+            "id",
+            "brand",
+            "model",
+            "year",
+            "mileage",
+            "condition",
+            "battery_brand",
+            "battery_model",
+            "battery_capacity",
+            "battery_type",
+            "battery_range",
+            "battery_condition",
+            "charging_time",
+          ],
+        },
+        {
+          model: BatteryDetailModel,
+          as: "batteryDetail",
+          required: false,
+          attributes: [
+            "id",
+            "battery_brand",
+            "battery_model",
+            "battery_capacity",
+            "battery_type",
+            "battery_condition",
+            "compatible_models",
+          ],
+        },
+      ],
+    });
+
+    if (!post) {
+      return res.status(404).json({ message: "Không tìm thấy post" });
+    }
+
+    // Chỉ cho chủ post xem
+    if (post.userId !== userId) {
+      return res.status(403).json({ message: "Bạn không có quyền xem post này" });
+    }
+
+    return res.json({ data: post });
+  } catch (err) {
+    console.error("getMyPostDetail error:", err);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// ======================================================
 // GET USER POSTS (public)
 // ======================================================
 export const getUserPosts = async (req, res) => {
