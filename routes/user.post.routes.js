@@ -203,6 +203,30 @@ router.patch(
  *     tags: [Users ( Posts )]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID của post cần xóa
+ *     responses:
+ *       200:
+ *         description: Xóa post thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Xóa bài đăng #15 thành công"
+ *       403:
+ *         description: Không có quyền (chỉ đúng owner / customer)
+ *       404:
+ *         description: Không tìm thấy post
+ *       500:
+ *         description: Internal server error
  */
 router.delete(
   "/delete/:id",

@@ -208,5 +208,28 @@ const getPostDetail = async (req, res) => {
   }
 };
 
+const deletePost = async (req, res) => {
+  try {
+    const role = req.user?.role;
+    const { id } = req.params;
 
-export { getAllPosts, verifyPost, getPostDetail };
+    if (role !== "admin") {
+      return res.status(403).json({ message: "Chỉ Admin được phép xóa bài đăng" });
+    }
+
+    const post = await PostModel.findByPk(id);
+    if (!post) {
+      return res.status(404).json({ message: "Không tìm thấy bài đăng" });
+    }
+
+    await post.destroy(); // ⬅️ HARD DELETE
+
+    return res.json({ message: `Xóa bài đăng #${id} thành công` });
+  } catch (err) {
+    console.error("deletePost error:", err);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
+export { getAllPosts, verifyPost, getPostDetail, deletePost };
