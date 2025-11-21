@@ -118,7 +118,7 @@ const createUsers = async (req, res) => {
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-
+    const verifiedValue = (role === "admin" || role === "staff") ? true : isVerified;
     await UserModel.create({
       username,
       email,
@@ -126,7 +126,7 @@ const createUsers = async (req, res) => {
       avatar: avatar || null,
       password: hashedPassword,
       role,          // nếu FE cho chọn role (admin/staff/customer)
-      isVerified,    // boolean
+      isVerified: verifiedValue, // boolean
     });
 
     return res
