@@ -259,6 +259,20 @@ router.get(
  *     tags: [Users ( Posts )]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID của user cần lấy danh sách bài đăng
+ *     responses:
+ *       200:
+ *         description: Danh sách bài đăng của user
+ *       404:
+ *         description: Không tìm thấy user hoặc không có bài đăng
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/user/:userId",
@@ -266,5 +280,6 @@ router.get(
   isCustomer,
   getUserPosts
 );
+
 
 export default router;
