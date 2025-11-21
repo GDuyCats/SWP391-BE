@@ -148,6 +148,7 @@ const getPostDetail = async (req, res) => {
     const post = await PostModel.findByPk(id, {
       attributes: [
         ...PUBLIC_POST_ATTRS,
+        "content", 
         "image",
         "thumbnail",
       ],
