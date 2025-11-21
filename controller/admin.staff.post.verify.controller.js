@@ -146,7 +146,11 @@ const getPostDetail = async (req, res) => {
     const { id } = req.params;
 
     const post = await PostModel.findByPk(id, {
-      attributes: PUBLIC_POST_ATTRS,
+      attributes: [
+        ...PUBLIC_POST_ATTRS,
+        "image",
+        "thumbnail",
+      ],
       include: [
         {
           model: UserModel,
