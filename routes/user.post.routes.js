@@ -243,6 +243,13 @@ router.delete(
  *     tags: [Users ( Posts )]
  *     security:
  *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Danh sách bài đăng của chính user
+ *       401:
+ *         description: Unauthorized (missing or invalid token)
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/me/post",
